@@ -40,8 +40,8 @@ function formatRecurrence(r: Pick<Routine, "recurrence_type" | "recurrence_days"
 
 const SYNC_CODE = "IL-8839";
 const DEVICES = [
-  { name: "管理员 · iPhone 15 Pro", role: "planner" },
-  { name: "客厅 iPad · 全家看板", role: "family" },
+  { name: "控制台 · iPhone 15 Pro", role: "planner" },
+  { name: "桌面 iPad · 核心日程看板", role: "family" },
 ];
 
 export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = false, onTogglePro, onRequestPaywall, voiceAlarmOn = true, onVoiceAlarmChange }: Props) {
