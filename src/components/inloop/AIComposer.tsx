@@ -30,7 +30,16 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
-  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
+  const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
+  useEffect(() => {
+    // 真实登录 uid 一旦就绪，把默认的 "me" 槽位同步替换，避免写入 mock id 与看板过滤错位
+    if (currentUserId) {
+      setOwnerIds((prev) => {
+        const next = prev.map((id) => (id === MOCK_USERS.me.id ? currentUserId : id));
+        return next.includes(currentUserId) ? next : next;
+      });
+    }
+  }, [currentUserId]);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
