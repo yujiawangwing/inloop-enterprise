@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles, Link2, Mic } from "lucide-react";
+import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
-  onSync: (instruction: string, pastedLink: string) => void;
+  onSync: (instruction: string, attachmentUrl: string) => void;
   remaining?: number | null;
   loading?: boolean;
 }
@@ -21,11 +22,13 @@ type SpeechRecognitionLike = {
 
 export function AIComposer({ onSync, remaining, loading = false }: Props) {
   const [instruction, setInstruction] = useState("");
-  const [linkRaw, setLinkRaw] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
-  const canSend = instruction.trim().length > 0 || linkRaw.trim().length > 0;
+  const canSend = instruction.trim().length > 0 || attachmentUrl.trim().length > 0;
 
   useEffect(() => {
     return () => {
@@ -35,9 +38,39 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
 
   function submit() {
     if (!canSend || loading) return;
-    onSync(instruction.trim(), linkRaw.trim());
+    onSync(instruction.trim(), attachmentUrl.trim());
     setInstruction("");
-    setLinkRaw("");
+    setAttachmentUrl("");
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("图片不能超过 10MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `agenda/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage
+        .from("agenda-attachments")
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+      if (error) {
+        alert(`上传失败：${error.message}`);
+        return;
+      }
+      const { data } = supabase.storage.from("agenda-attachments").getPublicUrl(path);
+      setAttachmentUrl(data.publicUrl);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   function toggleMic() {
@@ -51,7 +84,7 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike })
         .webkitSpeechRecognition;
     if (!Ctor) {
-      alert("当前浏览器不支持语音输入，请使用键盘打字哦");
+      alert("当前浏览器不支持语音输入，请使用键盘录入");
       return;
     }
     const rec = new Ctor();
@@ -79,7 +112,7 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       console.warn("SpeechRecognition error:", ev?.error);
       setListening(false);
       if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
-        alert("麦克风权限被拒绝，请在浏览器设置中允许后再试～");
+        alert("麦克风权限被拒绝，请在浏览器设置中允许后再试");
       }
     };
 
@@ -98,11 +131,11 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       <div className="flex items-center gap-1.5 px-1 pb-1.5">
         <Sparkles className="h-2.5 w-2.5 text-primary" />
         <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-          Inloop AI · 管理员输入
+          Inloop AI · 助理指令输入
         </span>
       </div>
 
-      {/* 上层主框：自然语言指令 + 麦克风按钮 */}
+      {/* 主输入框：自然语言工作指令 + 麦克风 */}
       <div className="relative">
         <textarea
           value={instruction}
@@ -116,8 +149,8 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
           rows={2}
           placeholder={
             listening
-              ? "正在倾听中，请说话...（完成后再次点击麦克风停止）"
-              : '用大白话碎碎念：比如"早上七八点吃药、下午去公园"...'
+              ? "正在拾音中，请清晰口述工作指令...（再次点击麦克风停止）"
+              : "请输入或口述工作指令：如\"明天下午两点陪同领导参加半导体行业峰会\"..."
           }
           className="block w-full resize-none border-0 bg-transparent px-1 py-1 pr-8 text-[12.5px] leading-relaxed text-foreground placeholder:text-foreground/35 focus:outline-none"
         />
@@ -136,19 +169,52 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
         </button>
       </div>
 
-      {/* 下层副框：可选链接 */}
-      <div className="mt-1 flex items-center gap-1.5 rounded-lg bg-neutral-100 px-2 py-1.5">
-        <Link2 className="h-2.5 w-2.5 shrink-0 text-neutral-500" />
-        <input
-          type="text"
-          value={linkRaw}
-          onChange={(e) => setLinkRaw(e.target.value)}
-          placeholder="可选：粘贴小红书/公众号/视频原教程链接..."
-          style={{ WebkitAppearance: "none", appearance: "none", backgroundColor: "transparent", color: "rgb(64,64,64)" }}
-          className="block w-full border-0 bg-transparent text-[11px] text-neutral-700 placeholder:text-neutral-400 focus:outline-none appearance-none"
-        />
+      {/* 图片附件上传 */}
+      <div className="mt-1">
+        {attachmentUrl ? (
+          <div className="flex items-center gap-2 rounded-lg border border-foreground/10 bg-neutral-50 px-2 py-1.5">
+            <img
+              src={attachmentUrl}
+              alt="行程截图预览"
+              className="h-7 w-7 shrink-0 rounded object-cover"
+            />
+            <span className="min-w-0 flex-1 truncate text-[10.5px] text-foreground/60">
+              已上传行程截图
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachmentUrl("")}
+              aria-label="移除附件"
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-foreground/40 hover:bg-foreground/5 hover:text-foreground/70"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 bg-neutral-50/60 px-2.5 py-1.5 text-[10.5px] font-medium text-foreground/55 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
+            >
+              {uploading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ImagePlus className="h-3 w-3" />
+              )}
+              {uploading ? "上传中..." : "上传行程截图 / 邀请函图片"}
+            </button>
+          </>
+        )}
       </div>
-
 
       <div className="mt-1.5 flex items-center justify-between border-t border-foreground/8 pt-1.5">
         <span className="px-1 text-[9.5px] text-foreground/45">
@@ -170,7 +236,6 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
           <Send className="h-2.5 w-2.5" />
           {loading ? "🤖 智能解析中..." : "智能同步"}
         </button>
-
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Menu, Calendar as CalendarIcon } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
@@ -11,6 +11,7 @@ import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
+import { getMockUserId } from "@/lib/mockAuth";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { parseDraftWithDeepSeek, type DeepSeekDraft } from "@/lib/deepseek.functions";
 import { WakeAlarmOverlay } from "@/components/inloop/WakeAlarmOverlay";
 import { useTaskAlarm } from "@/hooks/useTaskAlarm";
+
 
 const VOICE_KEY = "inloop:voiceAlarm";
 
@@ -133,6 +135,8 @@ function isoToDate(iso: string): Date {
 }
 
 function Index() {
+  const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
@@ -152,6 +156,17 @@ function Index() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
+
+  // 高保真模拟登录守卫：未登录跳转到 /login
+  useEffect(() => {
+    const uid = getMockUserId();
+    if (!uid) {
+      navigate({ to: "/login", replace: true });
+      return;
+    }
+    setUserId(uid);
+  }, [navigate]);
+
 
   // Hydrate mode + voice toggle from localStorage (post-mount to avoid SSR mismatch)
   useEffect(() => {
@@ -207,16 +222,20 @@ function Index() {
 
 
 
-  // —— 数据加载：根据 selectedDate 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
+  // —— 数据加载：根据 selectedDate + userId 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
   useEffect(() => {
+    if (!userId) return;
+    const uid: string = userId;
     let cancelled = false;
 
     async function loadDateView() {
+
       // 23:00 Melting Log（只在加载今天时执行，避免来回切日期反复清理）
       if (selectedDate === today) {
         await supabase
           .from("tasks")
           .delete()
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine"])
           .lt("execution_date", today);
         const meltHour = new Date().getHours();
@@ -224,6 +243,7 @@ function Index() {
           await supabase
             .from("tasks")
             .delete()
+            .eq("user_id", uid)
             .in("type", ["temporary", "routine"])
             .eq("execution_date", today)
             .eq("is_completed", false);
@@ -234,10 +254,10 @@ function Index() {
       const targetDow = isoDow(dateObj);
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务
-      // （含 milestone — 未来日程也要出现在对应日期的时间轴上）
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
+        .eq("user_id", uid)
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
@@ -245,6 +265,7 @@ function Index() {
       const { data: routineRows } = await supabase
         .from("routines")
         .select("id, time, title, note, recurrence_days")
+        .eq("user_id", uid)
         .eq("active", true);
 
       const matchingRoutines = (routineRows ?? []).filter((r) => {
@@ -262,6 +283,7 @@ function Index() {
           note: r.note,
           execution_date: today,
           routine_id: r.id,
+          user_id: uid,
         }));
         await supabase
           .from("tasks")
@@ -271,6 +293,7 @@ function Index() {
         const { data: refreshed } = await supabase
           .from("tasks")
           .select("*")
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine", "milestone"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -279,7 +302,6 @@ function Index() {
         setTasks(merged);
         setTodayAlarmTasks(merged);
       } else {
-        // 未来/历史日期：tasks 行 + 未持久化的虚拟 routine 条目融合
         const persistedRoutineIds = new Set(
           (dayTaskRows ?? [])
             .filter((r) => r.type === "routine" && r.routine_id)
@@ -305,10 +327,10 @@ function Index() {
         if (cancelled) return;
         setTasks(merged);
 
-        // 同步拉一次"今天的真实 tasks"喂给闹钟
         const { data: todayRows } = await supabase
           .from("tasks")
           .select("*")
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -319,6 +341,7 @@ function Index() {
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
+        .eq("user_id", uid)
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
@@ -327,6 +350,8 @@ function Index() {
     }
 
     loadDateView();
+
+
 
     // Realtime — only mutate state for rows that match the date the user is currently viewing
     const channel = supabase
@@ -385,7 +410,7 @@ function Index() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selectedDate, today]);
+  }, [selectedDate, today, userId]);
 
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
@@ -445,10 +470,9 @@ function Index() {
     const isFuture = iso > today;
 
     if (recurrence === "daily") {
-      // Routine: insert into routines + inject into today's timeline if applicable
       const { data: routine } = await supabase
         .from("routines")
-        .insert({ time, title, active: true })
+        .insert({ time, title, active: true, user_id: userId })
         .select("id")
         .single();
       if (routine && !isFuture) {
@@ -460,6 +484,7 @@ function Index() {
             link: link ?? null,
             execution_date: today,
             routine_id: routine.id,
+            user_id: userId,
           }],
           { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
         );
@@ -468,13 +493,13 @@ function Index() {
     }
 
     if (recurrence === "weekly" || isFuture) {
-      // Future single event → milestone (weekly w/o real repeat engine kept as milestone too)
       await supabase.from("tasks").insert({
         type: "milestone",
         time,
         title,
         link: link ?? null,
         execution_date: iso,
+        user_id: userId,
       });
       return;
     }
@@ -485,11 +510,13 @@ function Index() {
       title,
       link: link ?? null,
       execution_date: iso,
+      user_id: userId,
     });
   }
 
 
-  async function handleSync(instruction: string, pastedLink: string) {
+
+  async function handleSync(instruction: string, attachmentUrl: string) {
     if (!isPro && aiInputsRemaining <= 0) {
       setPaywallOpen(true);
       return;
@@ -500,7 +527,7 @@ function Index() {
     try {
       let parsed: DraftTask[];
       try {
-        parsed = await callDeepSeek(instruction, pastedLink);
+        parsed = await callDeepSeek(instruction, attachmentUrl);
       } catch (err: unknown) {
         // 严禁静默返回本地假日程 —— 必须把真实报错原因暴露给用户
         console.error("DeepSeek API 报错原因:", err);
@@ -543,6 +570,7 @@ function Index() {
           note: d.note,
           link: d.link,
           execution_date: d.execution_date ?? today,
+          user_id: userId,
         }));
         await supabase.from("tasks").insert(rows);
       }
@@ -559,6 +587,7 @@ function Index() {
             d.recurrence_days && d.recurrence_days.length > 0
               ? d.recurrence_days
               : [1, 2, 3, 4, 5, 6, 7],
+          user_id: userId,
         }));
         const { data: insertedRoutines } = await supabase
           .from("routines")
@@ -580,6 +609,7 @@ function Index() {
               note: r.note,
               execution_date: today,
               routine_id: r.id,
+              user_id: userId,
             }));
         if (todaysInjections.length > 0) {
           await supabase
@@ -591,6 +621,7 @@ function Index() {
         }
       }
     }
+
     setVerifyOpen(false);
     setDrafts([]);
   }
@@ -610,8 +641,9 @@ function Index() {
               <Menu className="h-[15px] w-[15px] stroke-[1.75]" />
             </button>
             <span className="rounded-full border border-foreground/15 px-2 py-0.5 text-[9.5px] font-medium tracking-[0.14em] text-foreground/65">
-              {isFamily ? "全家看板" : `管理员模式${isPro ? " · Pro" : ""}`}
+              {isFamily ? "领导今日行程看板" : `助理输入端${isPro ? " · Pro" : ""}`}
             </span>
+
           </div>
           <div className="flex items-center gap-2.5">
             <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -630,8 +662,9 @@ function Index() {
             InLoop
           </h1>
           <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            HIGH-IQ FAMILY PARENTING COLLABORATION AGENT
+            INLOOP — HIGH-IQ EXECUTIVE AGENDA COLLABORATION AGENT
           </p>
+
         </div>
       </header>
 
@@ -655,7 +688,7 @@ function Index() {
                 )}
               >
                 <span>
-                  {isToday ? "今日时间轴" : `${selectedDate.slice(5).replace("-", "/")} · 日程`}
+                  {isToday ? "领导今日行程看板" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
                 <CalendarIcon
                   className={cn(
