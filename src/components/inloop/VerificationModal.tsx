@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Link2, ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
+import { ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
 import type { DraftTask } from "@/lib/parseDraft";
+import { ImageUploader } from "./ImageUploader";
+import { ImageLightbox } from "./ImageLightbox";
 
 interface Props {
   open: boolean;
