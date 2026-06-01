@@ -242,7 +242,7 @@ function Index() {
         await supabase
           .from("tasks")
           .delete()
-          .eq("user_id", uid)
+          .eq("owner_id", uid)
           .in("type", ["temporary", "routine"])
           .lt("execution_date", today);
         const meltHour = new Date().getHours();
