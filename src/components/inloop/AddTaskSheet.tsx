@@ -19,6 +19,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { ImageUploader } from "./ImageUploader";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS } from "@/lib/mockUsers";
 
 export type Recurrence = "none" | "daily" | "weekly";
 
@@ -28,12 +30,14 @@ export interface NewTaskPayload {
   date: Date;
   recurrence: Recurrence;
   image_url?: string;
+  owner_ids: string[];
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onAdd: (payload: NewTaskPayload) => void;
+  currentUserId?: string | null;
 }
 
 
