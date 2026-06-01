@@ -641,8 +641,9 @@ function Index() {
               <Menu className="h-[15px] w-[15px] stroke-[1.75]" />
             </button>
             <span className="rounded-full border border-foreground/15 px-2 py-0.5 text-[9.5px] font-medium tracking-[0.14em] text-foreground/65">
-              {isFamily ? "全家看板" : `管理员模式${isPro ? " · Pro" : ""}`}
+              {isFamily ? "领导今日行程看板" : `助理输入端${isPro ? " · Pro" : ""}`}
             </span>
+
           </div>
           <div className="flex items-center gap-2.5">
             <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -661,8 +662,9 @@ function Index() {
             InLoop
           </h1>
           <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            HIGH-IQ FAMILY PARENTING COLLABORATION AGENT
+            INLOOP — HIGH-IQ EXECUTIVE AGENDA COLLABORATION AGENT
           </p>
+
         </div>
       </header>
 
@@ -686,7 +688,7 @@ function Index() {
                 )}
               >
                 <span>
-                  {isToday ? "今日时间轴" : `${selectedDate.slice(5).replace("-", "/")} · 日程`}
+                  {isToday ? "领导今日行程看板" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
                 <CalendarIcon
                   className={cn(
