@@ -24,12 +24,13 @@ type SpeechRecognitionLike = {
   onerror: ((e: { error?: string }) => void) | null;
 };
 
-export function AIComposer({ onSync, remaining, loading = false }: Props) {
+export function AIComposer({ onSync, remaining, loading = false, currentUserId }: Props) {
   const [instruction, setInstruction] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
+  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
@@ -52,7 +53,7 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
 
   function submit() {
     if (!canSend || loading) return;
-    onSync(instruction.trim(), attachmentUrl.trim());
+    onSync(instruction.trim(), attachmentUrl.trim(), ownerIds);
     setInstruction("");
     clearAttachment();
   }
