@@ -340,7 +340,7 @@ function Index() {
         const { data: todayRows } = await supabase
           .from("tasks")
           .select("*")
-          .eq("user_id", uid)
+          .eq("owner_id", uid)
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
