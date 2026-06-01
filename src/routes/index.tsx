@@ -153,6 +153,7 @@ function Index() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("planner");
   const [drawerOpen, setDrawerOpen] = useState(false);
