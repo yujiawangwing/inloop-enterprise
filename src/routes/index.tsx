@@ -410,7 +410,7 @@ function Index() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selectedDate, today]);
+  }, [selectedDate, today, userId]);
 
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
@@ -470,10 +470,9 @@ function Index() {
     const isFuture = iso > today;
 
     if (recurrence === "daily") {
-      // Routine: insert into routines + inject into today's timeline if applicable
       const { data: routine } = await supabase
         .from("routines")
-        .insert({ time, title, active: true })
+        .insert({ time, title, active: true, user_id: userId })
         .select("id")
         .single();
       if (routine && !isFuture) {
@@ -485,6 +484,7 @@ function Index() {
             link: link ?? null,
             execution_date: today,
             routine_id: routine.id,
+            user_id: userId,
           }],
           { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
         );
@@ -493,13 +493,13 @@ function Index() {
     }
 
     if (recurrence === "weekly" || isFuture) {
-      // Future single event → milestone (weekly w/o real repeat engine kept as milestone too)
       await supabase.from("tasks").insert({
         type: "milestone",
         time,
         title,
         link: link ?? null,
         execution_date: iso,
+        user_id: userId,
       });
       return;
     }
@@ -510,11 +510,13 @@ function Index() {
       title,
       link: link ?? null,
       execution_date: iso,
+      user_id: userId,
     });
   }
 
 
-  async function handleSync(instruction: string, pastedLink: string) {
+
+  async function handleSync(instruction: string, attachmentUrl: string) {
     if (!isPro && aiInputsRemaining <= 0) {
       setPaywallOpen(true);
       return;
@@ -525,7 +527,7 @@ function Index() {
     try {
       let parsed: DraftTask[];
       try {
-        parsed = await callDeepSeek(instruction, pastedLink);
+        parsed = await callDeepSeek(instruction, attachmentUrl);
       } catch (err: unknown) {
         // 严禁静默返回本地假日程 —— 必须把真实报错原因暴露给用户
         console.error("DeepSeek API 报错原因:", err);
@@ -568,6 +570,7 @@ function Index() {
           note: d.note,
           link: d.link,
           execution_date: d.execution_date ?? today,
+          user_id: userId,
         }));
         await supabase.from("tasks").insert(rows);
       }
@@ -584,6 +587,7 @@ function Index() {
             d.recurrence_days && d.recurrence_days.length > 0
               ? d.recurrence_days
               : [1, 2, 3, 4, 5, 6, 7],
+          user_id: userId,
         }));
         const { data: insertedRoutines } = await supabase
           .from("routines")
@@ -605,6 +609,7 @@ function Index() {
               note: r.note,
               execution_date: today,
               routine_id: r.id,
+              user_id: userId,
             }));
         if (todaysInjections.length > 0) {
           await supabase
@@ -616,6 +621,7 @@ function Index() {
         }
       }
     }
+
     setVerifyOpen(false);
     setDrafts([]);
   }
