@@ -237,6 +237,17 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
 
           <div className="space-y-1.5">
             <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              👥 协同目标 (To:)
+            </Label>
+            <OwnerSelector
+              value={ownerIds}
+              onChange={setOwnerIds}
+              currentUserId={currentUserId}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
               📸 行程截图 / 邀请函（可选）
             </Label>
             <ImageUploader value={imageUrl} onChange={setImageUrl} />
