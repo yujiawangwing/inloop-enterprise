@@ -269,6 +269,7 @@ function Index() {
       const targetDow = isoDow(dateObj);
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
+      console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
@@ -276,6 +277,7 @@ function Index() {
         .eq("flow_status", "accepted")
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
+      console.log("[Dashboard] 从数据库捞出的原始 tasks 行 =", dayTaskRows);
 
       // 动作 B：routines 表全量周期任务，前端按 recurrence_days 过滤
       const { data: routineRows } = await supabase
@@ -520,7 +522,9 @@ function Index() {
   }) {
     const { time, title, date, recurrence, image_url, owner_ids } = payload;
     const creatorId = userId ?? MOCK_USERS.me.id;
-    const targets = owner_ids.length > 0 ? owner_ids : [creatorId];
+    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid，保证写入与看板过滤完全对齐
+    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const targets = (owner_ids.length > 0 ? owner_ids : [creatorId]).map(normalize);
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const isFuture = iso > today;
@@ -629,6 +633,8 @@ function Index() {
   async function publishDrafts(finalDrafts: DraftTask[]) {
     const source = finalDrafts ?? drafts;
     const creatorId = userId ?? MOCK_USERS.me.id;
+    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid
+    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
@@ -637,7 +643,7 @@ function Index() {
       if (oneOffDrafts.length > 0) {
         const rows = oneOffDrafts.flatMap((d) => {
           const targets =
-            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+            (d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId]).map(normalize);
           return targets.map((ownerId) => ({
             type: d.type,
             time: d.time,
@@ -659,7 +665,7 @@ function Index() {
       if (recurringDrafts.length > 0) {
         const routineRows = recurringDrafts.flatMap((d) => {
           const targets =
-            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+            (d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId]).map(normalize);
           return targets.map((ownerId) => ({
             time: d.time,
             title: d.title,

@@ -27,6 +27,13 @@ export function OwnerSelector({
 }: Props) {
   const [open, setOpen] = useState(false);
 
+  // 🔑 把 mock "me" 槽位映射到真实登录用户 ID，保证写入 owner_id 与主看板过滤一致
+  const meId = currentUserId ?? MOCK_USERS.me.id;
+  const userList = MOCK_USER_LIST.map((u) =>
+    u.id === MOCK_USERS.me.id ? { ...u, id: meId } : u,
+  );
+  const isMeId = (id: string) => id === meId || id === MOCK_USERS.me.id;
+
   function toggle(id: string) {
     if (value.includes(id)) {
       if (value.length === 1) return; // 至少留 1 个
@@ -37,7 +44,9 @@ export function OwnerSelector({
   }
 
   const selectedUsers = value
-    .map((id) => getMockUserById(id))
+    .map((id) =>
+      isMeId(id) ? { ...MOCK_USERS.me, id: meId } : getMockUserById(id),
+    )
     .filter((u): u is NonNullable<ReturnType<typeof getMockUserById>> => Boolean(u));
 
   const compact = size === "sm";
@@ -58,7 +67,7 @@ export function OwnerSelector({
           <span className="font-medium uppercase tracking-[0.14em] text-foreground/50">To:</span>
           <span className="flex min-w-0 flex-wrap items-center gap-1">
             {selectedUsers.map((u) => {
-              const isMe = u.id === currentUserId;
+              const isMe = isMeId(u.id);
               return (
                 <span
                   key={u.id}
@@ -84,9 +93,9 @@ export function OwnerSelector({
         <div className="px-2 py-1.5 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-foreground/45">
           协同目标 · 可多选
         </div>
-        {MOCK_USER_LIST.map((u) => {
-          const checked = value.includes(u.id);
-          const isMe = u.id === currentUserId;
+        {userList.map((u) => {
+          const checked = value.includes(u.id) || (isMeId(u.id) && value.some(isMeId));
+          const isMe = isMeId(u.id);
           return (
             <button
               key={u.id}
