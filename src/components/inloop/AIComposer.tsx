@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/compressImage";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS } from "@/lib/mockUsers";
 
 interface Props {
-  onSync: (instruction: string, attachmentUrl: string) => void;
+  onSync: (instruction: string, attachmentUrl: string, ownerIds: string[]) => void;
   remaining?: number | null;
   loading?: boolean;
+  currentUserId?: string | null;
 }
 
 // Minimal typing for the Web Speech API
