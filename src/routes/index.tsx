@@ -350,6 +350,7 @@ function Index() {
           .from("tasks")
           .select("*")
           .eq("owner_id", uid)
+          .eq("flow_status", "accepted")
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
