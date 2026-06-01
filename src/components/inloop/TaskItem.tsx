@@ -129,6 +129,27 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               </a>
             )}
 
+            {task.image_url && (
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                aria-label="查看行程截图大图"
+                className={cn(
+                  "group/img mt-2 block overflow-hidden rounded-lg border border-foreground/10 bg-neutral-50 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]",
+                  isFamily ? "h-24 w-24" : "h-16 w-16",
+                )}
+              >
+                <img
+                  src={task.image_url}
+                  alt="行程截图缩略图"
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform group-hover/img:scale-105"
+                />
+              </button>
+            )}
+
+
+
             {/* Planner-mode status label */}
             {!isFamily && (
               <div className="mt-3 flex items-center gap-2">
