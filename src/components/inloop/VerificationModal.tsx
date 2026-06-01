@@ -214,6 +214,7 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
           </button>
         </div>
       </DialogContent>
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </Dialog>
   );
 }
