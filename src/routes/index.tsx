@@ -538,7 +538,7 @@ function Index() {
 
 
 
-  async function handleSync(instruction: string, attachmentUrl: string) {
+  async function handleSync(instruction: string, attachmentUrl: string, ownerIds: string[]) {
     if (!isPro && aiInputsRemaining <= 0) {
       setPaywallOpen(true);
       return;
@@ -568,11 +568,13 @@ function Index() {
         alert("DeepSeek 返回了空数组，没识别出有效日程，换种说法再试一次～");
         return;
       }
-      // 把上传好的截图 URL 附加到每一条草稿上
-      const withImage = attachmentUrl
-        ? parsed.map((d) => ({ ...d, image_url: attachmentUrl }))
-        : parsed;
-      setDrafts(withImage);
+      // 将协同目标 + 上传截图 URL 附加到每条草稿
+      const stamped = parsed.map((d) => ({
+        ...d,
+        image_url: attachmentUrl || d.image_url,
+        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+      }));
+      setDrafts(stamped);
       setVerifyOpen(true);
       if (!isPro) setAiInputsRemaining((n) => Math.max(0, n - 1));
     } finally {
@@ -583,43 +585,58 @@ function Index() {
 
   async function publishDrafts(finalDrafts: DraftTask[]) {
     const source = finalDrafts ?? drafts;
+    const creatorId = userId ?? MOCK_USERS.me.id;
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
 
-      // —— ① 单次任务：写入 tasks 表 ——
+      // —— ① 单次任务：按协同目标"影子复制"成多条独立行 ——
       if (oneOffDrafts.length > 0) {
-        const rows = oneOffDrafts.map((d) => ({
-          type: d.type,
-          time: d.time,
-          title: d.title,
-          note: d.note,
-          link: d.link,
-          image_url: d.image_url ?? null,
-          execution_date: d.execution_date ?? today,
-          user_id: userId,
-        }));
+        const rows = oneOffDrafts.flatMap((d) => {
+          const targets =
+            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+          return targets.map((ownerId) => ({
+            type: d.type,
+            time: d.time,
+            title: d.title,
+            note: d.note,
+            link: d.link,
+            image_url: d.image_url ?? null,
+            execution_date: d.execution_date ?? today,
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: ownerId === creatorId ? "accepted" : "pending",
+          }));
+        });
         await supabase.from("tasks").insert(rows);
       }
 
-      // —— ② 周期任务：写入 routines 表，并立刻把今天命中的注入到时间轴 ——
+      // —— ② 周期任务：每个 owner 一条 routine + 命中今日则注入 tasks ——
       if (recurringDrafts.length > 0) {
-        const routineRows = recurringDrafts.map((d) => ({
-          time: d.time,
-          title: d.title,
-          note: d.note ?? null,
-          active: true,
-          recurrence_type: d.recurrence_type ?? "daily",
-          recurrence_days:
-            d.recurrence_days && d.recurrence_days.length > 0
-              ? d.recurrence_days
-              : [1, 2, 3, 4, 5, 6, 7],
-          user_id: userId,
-        }));
+        const routineRows = recurringDrafts.flatMap((d) => {
+          const targets =
+            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+          return targets.map((ownerId) => ({
+            time: d.time,
+            title: d.title,
+            note: d.note ?? null,
+            active: true,
+            recurrence_type: d.recurrence_type ?? "daily",
+            recurrence_days:
+              d.recurrence_days && d.recurrence_days.length > 0
+                ? d.recurrence_days
+                : [1, 2, 3, 4, 5, 6, 7],
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: ownerId === creatorId ? "accepted" : "pending",
+          }));
+        });
         const { data: insertedRoutines } = await supabase
           .from("routines")
           .insert(routineRows)
-          .select("id, time, title, note, recurrence_days");
+          .select("id, time, title, note, recurrence_days, owner_id, creator_id, flow_status");
 
         const jsDay = new Date().getDay();
         const todayIsoDow = jsDay === 0 ? 7 : jsDay;
@@ -629,15 +646,30 @@ function Index() {
               const days = (r as { recurrence_days?: number[] | null }).recurrence_days;
               return !Array.isArray(days) || days.length === 0 || days.includes(todayIsoDow);
             })
-            .map((r) => ({
-              type: "routine" as const,
-              time: r.time,
-              title: r.title,
-              note: r.note,
-              execution_date: today,
-              routine_id: r.id,
-              user_id: userId,
-            }));
+            .map((r) => {
+              const rr = r as {
+                id: string;
+                time: string;
+                title: string;
+                note: string | null;
+                owner_id: string | null;
+                creator_id: string | null;
+                flow_status: string | null;
+              };
+              const ownerId = rr.owner_id ?? creatorId;
+              return {
+                type: "routine" as const,
+                time: rr.time,
+                title: rr.title,
+                note: rr.note,
+                execution_date: today,
+                routine_id: rr.id,
+                user_id: ownerId,
+                owner_id: ownerId,
+                creator_id: rr.creator_id ?? creatorId,
+                flow_status: rr.flow_status ?? "accepted",
+              };
+            });
         if (todaysInjections.length > 0) {
           await supabase
             .from("tasks")
