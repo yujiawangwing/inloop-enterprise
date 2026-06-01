@@ -663,7 +663,7 @@ function Index() {
       if (recurringDrafts.length > 0) {
         const routineRows = recurringDrafts.flatMap((d) => {
           const targets =
-            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+            (d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId]).map(normalize);
           return targets.map((ownerId) => ({
             time: d.time,
             title: d.title,
