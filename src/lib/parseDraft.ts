@@ -8,6 +8,7 @@ export interface DraftTask {
   note?: string;
   link?: string;
   execution_date?: string; // YYYY-MM-DD, only for milestones
+  image_url?: string; // 行程截图 / 邀请函附件
   // —— 周期任务字段 ——
   is_recurring?: boolean;
   recurrence_type?: RecurrenceType;
