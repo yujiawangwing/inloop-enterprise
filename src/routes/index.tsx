@@ -264,7 +264,7 @@ function Index() {
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", uid)
+        .eq("owner_id", uid)
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
