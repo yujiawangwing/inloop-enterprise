@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { ImageUploader } from "./ImageUploader";
 
 export type Recurrence = "none" | "daily" | "weekly";
 
@@ -26,7 +27,7 @@ export interface NewTaskPayload {
   title: string;
   date: Date;
   recurrence: Recurrence;
-  link?: string;
+  image_url?: string;
 }
 
 interface Props {
