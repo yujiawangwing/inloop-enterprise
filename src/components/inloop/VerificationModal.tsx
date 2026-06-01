@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
+import { ShieldCheck, Sparkles, Pencil, Repeat, Users } from "lucide-react";
 import type { DraftTask } from "@/lib/parseDraft";
 import { ImageUploader } from "./ImageUploader";
 import { ImageLightbox } from "./ImageLightbox";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
 
 interface Props {
   open: boolean;
   drafts: DraftTask[];
   onCancel: () => void;
   onConfirm: (finalDrafts: DraftTask[]) => void;
+  currentUserId?: string | null;
 }
 
-export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) {
+export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editable, setEditable] = useState<DraftTask[]>(drafts);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -114,6 +117,14 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
                   className="mt-2 block w-full rounded-md border border-foreground/12 bg-background px-2.5 py-1.5 text-[14px] font-medium leading-snug text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none"
                 />
                 <div className="mt-1.5">
+                  <OwnerSelector
+                    value={d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [MOCK_USERS.me.id]}
+                    onChange={(ids) => updateField(i, "owner_ids", ids)}
+                    currentUserId={currentUserId}
+                    size="sm"
+                  />
+                </div>
+                <div className="mt-1.5">
                   <ImageUploader
                     value={d.image_url ?? null}
                     onChange={(url) => updateField(i, "image_url", url ?? undefined)}
@@ -155,6 +166,34 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
                 <p className="mt-2 break-words text-[15px] font-medium leading-snug text-foreground">
                   {d.title}
                 </p>
+
+                {/* 协同目标药丸 */}
+                {d.owner_ids && d.owner_ids.length > 0 && (
+                  <div className="mt-2 inline-flex flex-wrap items-center gap-1.5">
+                    <Users className="h-3 w-3 text-foreground/40" />
+                    <span className="text-[9.5px] font-medium uppercase tracking-[0.16em] text-foreground/45">
+                      指派
+                    </span>
+                    {d.owner_ids.map((oid) => {
+                      const u = getMockUserById(oid);
+                      if (!u) return null;
+                      const isMe = oid === currentUserId;
+                      return (
+                        <span
+                          key={oid}
+                          className={`inline-flex items-center rounded-full px-1.5 py-[1px] text-[10px] font-medium leading-none ${u.avatarColor} ${isMe ? "ring-1 ring-primary/30" : ""}`}
+                        >
+                          {isMe ? "我本人" : u.label}
+                          {!isMe && (
+                            <span className="ml-1 text-[8.5px] font-semibold tracking-wider opacity-70">
+                              · 待确认
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {d.image_url && (
                   <button

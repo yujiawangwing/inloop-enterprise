@@ -19,6 +19,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { ImageUploader } from "./ImageUploader";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS } from "@/lib/mockUsers";
 
 export type Recurrence = "none" | "daily" | "weekly";
 
@@ -28,12 +30,14 @@ export interface NewTaskPayload {
   date: Date;
   recurrence: Recurrence;
   image_url?: string;
+  owner_ids: string[];
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onAdd: (payload: NewTaskPayload) => void;
+  currentUserId?: string | null;
 }
 
 
@@ -45,12 +49,13 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
-export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
+export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props) {
   const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
@@ -66,12 +71,14 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
       date,
       recurrence,
       image_url: imageUrl ?? undefined,
+      owner_ids: ownerIds,
     });
     setTime("");
     setTitle("");
     setDate(new Date());
     setRecurrence("none");
     setImageUrl(null);
+    setOwnerIds([MOCK_USERS.me.id]);
     onOpenChange(false);
   }
 
@@ -226,6 +233,17 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              👥 协同目标 (To:)
+            </Label>
+            <OwnerSelector
+              value={ownerIds}
+              onChange={setOwnerIds}
+              currentUserId={currentUserId}
+            />
           </div>
 
           <div className="space-y-1.5">

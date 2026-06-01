@@ -12,6 +12,7 @@ import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { getMockUserId } from "@/lib/mockAuth";
+import { MOCK_USERS } from "@/lib/mockUsers";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -241,7 +242,7 @@ function Index() {
         await supabase
           .from("tasks")
           .delete()
-          .eq("user_id", uid)
+          .eq("owner_id", uid)
           .in("type", ["temporary", "routine"])
           .lt("execution_date", today);
         const meltHour = new Date().getHours();
@@ -249,7 +250,7 @@ function Index() {
           await supabase
             .from("tasks")
             .delete()
-            .eq("user_id", uid)
+            .eq("owner_id", uid)
             .in("type", ["temporary", "routine"])
             .eq("execution_date", today)
             .eq("is_completed", false);
@@ -263,7 +264,7 @@ function Index() {
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", uid)
+        .eq("owner_id", uid)
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
@@ -290,6 +291,9 @@ function Index() {
           execution_date: today,
           routine_id: r.id,
           user_id: uid,
+          owner_id: uid,
+          creator_id: uid,
+          flow_status: "accepted" as const,
         }));
         await supabase
           .from("tasks")
@@ -299,7 +303,7 @@ function Index() {
         const { data: refreshed } = await supabase
           .from("tasks")
           .select("*")
-          .eq("user_id", uid)
+          .eq("owner_id", uid)
           .in("type", ["temporary", "routine", "milestone"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -336,7 +340,7 @@ function Index() {
         const { data: todayRows } = await supabase
           .from("tasks")
           .select("*")
-          .eq("user_id", uid)
+          .eq("owner_id", uid)
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -347,7 +351,7 @@ function Index() {
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", uid)
+        .eq("owner_id", uid)
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
@@ -469,60 +473,72 @@ function Index() {
     date: Date;
     recurrence: "none" | "daily" | "weekly";
     image_url?: string;
+    owner_ids: string[];
   }) {
-    const { time, title, date, recurrence, image_url } = payload;
+    const { time, title, date, recurrence, image_url, owner_ids } = payload;
+    const creatorId = userId ?? MOCK_USERS.me.id;
+    const targets = owner_ids.length > 0 ? owner_ids : [creatorId];
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const isFuture = iso > today;
 
     if (recurrence === "daily") {
-      const { data: routine } = await supabase
-        .from("routines")
-        .insert({ time, title, active: true, user_id: userId })
-        .select("id")
-        .single();
-      if (routine && !isFuture) {
-        await supabase.from("tasks").upsert(
-          [{
-            type: "routine" as const,
+      // 周期任务：为每个 owner 各创建一条 routine
+      for (const ownerId of targets) {
+        const flow = ownerId === creatorId ? "accepted" : "pending";
+        const { data: routine } = await supabase
+          .from("routines")
+          .insert({
             time,
             title,
-            image_url: image_url ?? null,
-            execution_date: today,
-            routine_id: routine.id,
-            user_id: userId,
-          }],
-          { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
-        );
+            active: true,
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: flow,
+          })
+          .select("id")
+          .single();
+        if (routine && !isFuture) {
+          await supabase.from("tasks").upsert(
+            [{
+              type: "routine" as const,
+              time,
+              title,
+              image_url: image_url ?? null,
+              execution_date: today,
+              routine_id: routine.id,
+              user_id: ownerId,
+              owner_id: ownerId,
+              creator_id: creatorId,
+              flow_status: flow,
+            }],
+            { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
+          );
+        }
       }
       return;
     }
 
-    if (recurrence === "weekly" || isFuture) {
-      await supabase.from("tasks").insert({
-        type: "milestone",
-        time,
-        title,
-        image_url: image_url ?? null,
-        execution_date: iso,
-        user_id: userId,
-      });
-      return;
-    }
-
-    await supabase.from("tasks").insert({
-      type: "temporary",
+    const rows = targets.map((ownerId) => ({
+      type: (recurrence === "weekly" || isFuture ? "milestone" : "temporary") as
+        | "milestone"
+        | "temporary",
       time,
       title,
       image_url: image_url ?? null,
       execution_date: iso,
-      user_id: userId,
-    });
+      user_id: ownerId,
+      owner_id: ownerId,
+      creator_id: creatorId,
+      flow_status: ownerId === creatorId ? "accepted" : "pending",
+    }));
+    await supabase.from("tasks").insert(rows);
   }
 
 
 
-  async function handleSync(instruction: string, attachmentUrl: string) {
+  async function handleSync(instruction: string, attachmentUrl: string, ownerIds: string[]) {
     if (!isPro && aiInputsRemaining <= 0) {
       setPaywallOpen(true);
       return;
@@ -552,11 +568,13 @@ function Index() {
         alert("DeepSeek 返回了空数组，没识别出有效日程，换种说法再试一次～");
         return;
       }
-      // 把上传好的截图 URL 附加到每一条草稿上
-      const withImage = attachmentUrl
-        ? parsed.map((d) => ({ ...d, image_url: attachmentUrl }))
-        : parsed;
-      setDrafts(withImage);
+      // 将协同目标 + 上传截图 URL 附加到每条草稿
+      const stamped = parsed.map((d) => ({
+        ...d,
+        image_url: attachmentUrl || d.image_url,
+        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+      }));
+      setDrafts(stamped);
       setVerifyOpen(true);
       if (!isPro) setAiInputsRemaining((n) => Math.max(0, n - 1));
     } finally {
@@ -567,43 +585,58 @@ function Index() {
 
   async function publishDrafts(finalDrafts: DraftTask[]) {
     const source = finalDrafts ?? drafts;
+    const creatorId = userId ?? MOCK_USERS.me.id;
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
 
-      // —— ① 单次任务：写入 tasks 表 ——
+      // —— ① 单次任务：按协同目标"影子复制"成多条独立行 ——
       if (oneOffDrafts.length > 0) {
-        const rows = oneOffDrafts.map((d) => ({
-          type: d.type,
-          time: d.time,
-          title: d.title,
-          note: d.note,
-          link: d.link,
-          image_url: d.image_url ?? null,
-          execution_date: d.execution_date ?? today,
-          user_id: userId,
-        }));
+        const rows = oneOffDrafts.flatMap((d) => {
+          const targets =
+            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+          return targets.map((ownerId) => ({
+            type: d.type,
+            time: d.time,
+            title: d.title,
+            note: d.note,
+            link: d.link,
+            image_url: d.image_url ?? null,
+            execution_date: d.execution_date ?? today,
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: ownerId === creatorId ? "accepted" : "pending",
+          }));
+        });
         await supabase.from("tasks").insert(rows);
       }
 
-      // —— ② 周期任务：写入 routines 表，并立刻把今天命中的注入到时间轴 ——
+      // —— ② 周期任务：每个 owner 一条 routine + 命中今日则注入 tasks ——
       if (recurringDrafts.length > 0) {
-        const routineRows = recurringDrafts.map((d) => ({
-          time: d.time,
-          title: d.title,
-          note: d.note ?? null,
-          active: true,
-          recurrence_type: d.recurrence_type ?? "daily",
-          recurrence_days:
-            d.recurrence_days && d.recurrence_days.length > 0
-              ? d.recurrence_days
-              : [1, 2, 3, 4, 5, 6, 7],
-          user_id: userId,
-        }));
+        const routineRows = recurringDrafts.flatMap((d) => {
+          const targets =
+            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+          return targets.map((ownerId) => ({
+            time: d.time,
+            title: d.title,
+            note: d.note ?? null,
+            active: true,
+            recurrence_type: d.recurrence_type ?? "daily",
+            recurrence_days:
+              d.recurrence_days && d.recurrence_days.length > 0
+                ? d.recurrence_days
+                : [1, 2, 3, 4, 5, 6, 7],
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: ownerId === creatorId ? "accepted" : "pending",
+          }));
+        });
         const { data: insertedRoutines } = await supabase
           .from("routines")
           .insert(routineRows)
-          .select("id, time, title, note, recurrence_days");
+          .select("id, time, title, note, recurrence_days, owner_id, creator_id, flow_status");
 
         const jsDay = new Date().getDay();
         const todayIsoDow = jsDay === 0 ? 7 : jsDay;
@@ -613,15 +646,30 @@ function Index() {
               const days = (r as { recurrence_days?: number[] | null }).recurrence_days;
               return !Array.isArray(days) || days.length === 0 || days.includes(todayIsoDow);
             })
-            .map((r) => ({
-              type: "routine" as const,
-              time: r.time,
-              title: r.title,
-              note: r.note,
-              execution_date: today,
-              routine_id: r.id,
-              user_id: userId,
-            }));
+            .map((r) => {
+              const rr = r as {
+                id: string;
+                time: string;
+                title: string;
+                note: string | null;
+                owner_id: string | null;
+                creator_id: string | null;
+                flow_status: string | null;
+              };
+              const ownerId = rr.owner_id ?? creatorId;
+              return {
+                type: "routine" as const,
+                time: rr.time,
+                title: rr.title,
+                note: rr.note,
+                execution_date: today,
+                routine_id: rr.id,
+                user_id: ownerId,
+                owner_id: ownerId,
+                creator_id: rr.creator_id ?? creatorId,
+                flow_status: rr.flow_status ?? "accepted",
+              };
+            });
         if (todaysInjections.length > 0) {
           await supabase
             .from("tasks")
@@ -681,7 +729,7 @@ function Index() {
 
       {!isFamily && (
         <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} />
+          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} currentUserId={userId} />
         </section>
       )}
 
@@ -760,12 +808,13 @@ function Index() {
         </button>
       </div>
 
-      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} />
+      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} currentUserId={userId} />
       <VerificationModal
         open={verifyOpen}
         drafts={drafts}
         onCancel={() => setVerifyOpen(false)}
         onConfirm={publishDrafts}
+        currentUserId={userId}
       />
       <ThankYouToast show={thankShow} onDone={() => setThankShow(false)} />
       <PaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />

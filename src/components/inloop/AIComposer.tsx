@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/compressImage";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS } from "@/lib/mockUsers";
 
 interface Props {
-  onSync: (instruction: string, attachmentUrl: string) => void;
+  onSync: (instruction: string, attachmentUrl: string, ownerIds: string[]) => void;
   remaining?: number | null;
   loading?: boolean;
+  currentUserId?: string | null;
 }
 
 // Minimal typing for the Web Speech API
@@ -21,12 +24,13 @@ type SpeechRecognitionLike = {
   onerror: ((e: { error?: string }) => void) | null;
 };
 
-export function AIComposer({ onSync, remaining, loading = false }: Props) {
+export function AIComposer({ onSync, remaining, loading = false, currentUserId }: Props) {
   const [instruction, setInstruction] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
+  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
@@ -49,7 +53,7 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
 
   function submit() {
     if (!canSend || loading) return;
-    onSync(instruction.trim(), attachmentUrl.trim());
+    onSync(instruction.trim(), attachmentUrl.trim(), ownerIds);
     setInstruction("");
     clearAttachment();
   }
@@ -160,11 +164,20 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
 
   return (
     <div className="rounded-2xl border border-foreground/10 bg-card p-2.5 shadow-[0_1px_2px_rgba(34,34,34,0.04),0_12px_32px_-14px_rgba(34,34,34,0.12)] transition-all focus-within:border-primary/40 focus-within:shadow-[0_1px_2px_rgba(34,34,34,0.04),0_16px_40px_-14px_rgba(107,122,106,0.25)]">
-      <div className="flex items-center gap-1.5 px-1 pb-1.5">
-        <Sparkles className="h-2.5 w-2.5 text-primary" />
-        <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-          Inloop AI · 助理指令输入
-        </span>
+      <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Sparkles className="h-2.5 w-2.5 shrink-0 text-primary" />
+          <span className="truncate text-[9px] font-medium uppercase tracking-[0.2em] text-foreground/55">
+            Inloop AI · 助理指令输入
+          </span>
+        </div>
+        <OwnerSelector
+          value={ownerIds}
+          onChange={setOwnerIds}
+          currentUserId={currentUserId}
+          size="sm"
+          align="end"
+        />
       </div>
 
       {/* 主输入框：自然语言工作指令 + 麦克风 */}
