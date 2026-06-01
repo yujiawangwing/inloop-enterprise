@@ -399,26 +399,45 @@ function Index() {
             setTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
             setTodayAlarmTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
             setMilestones((ms) => ms.filter((t) => t.id !== oldRow.id));
+            setPendingTasks((ps) => ps.filter((t) => t.id !== oldRow.id));
             return;
           }
           if (!newRow) return;
+          // 只关心 owner=当前用户 的行
+          if (newRow.owner_id !== uid) return;
           const t = rowToTask(newRow);
+          const isAccepted = newRow.flow_status === "accepted";
+          const isPending = newRow.flow_status === "pending";
+
+          // —— Pending Inbox 同步 ——
+          setPendingTasks((ps) => {
+            const without = ps.filter((x) => x.id !== t.id);
+            if (isPending) {
+              return [...without, t].sort(
+                (a, b) =>
+                  (a.execution_date ?? "").localeCompare(b.execution_date ?? "") ||
+                  a.time.localeCompare(b.time),
+              );
+            }
+            return without;
+          });
 
           if (newRow.type === "milestone") {
-            if (newRow.execution_date && newRow.execution_date >= today) {
-              setMilestones((ms) => {
-                const next = ms.filter((m) => m.id !== t.id);
+            setMilestones((ms) => {
+              const next = ms.filter((m) => m.id !== t.id);
+              if (isAccepted && newRow.execution_date && newRow.execution_date >= today) {
                 return [...next, t].sort((a, b) =>
                   (a.execution_date ?? "").localeCompare(b.execution_date ?? ""),
                 );
-              });
-            }
+              }
+              return next;
+            });
           }
-          // 同时让 milestone / temporary / routine 都能进入"当前所选日"时间轴
           {
             const belongsToView =
-              newRow.execution_date === selectedDate ||
-              (!newRow.execution_date && selectedDate === today);
+              isAccepted &&
+              (newRow.execution_date === selectedDate ||
+                (!newRow.execution_date && selectedDate === today));
             setTasks((ts) => {
               const filtered = ts.filter((x) => x.id !== t.id);
               if (!belongsToView) return filtered;
@@ -426,12 +445,13 @@ function Index() {
               next.sort((a, b) => a.time.localeCompare(b.time));
               return next;
             });
-            // Update alarm pool if it's a real row for today
-            if (newRow.execution_date === today && newRow.type !== "milestone") {
+            if (isAccepted && newRow.execution_date === today && newRow.type !== "milestone") {
               setTodayAlarmTasks((ts) => {
                 const filtered = ts.filter((x) => x.id !== t.id);
                 return [...filtered, t];
               });
+            } else if (!isAccepted) {
+              setTodayAlarmTasks((ts) => ts.filter((x) => x.id !== t.id));
             }
           }
         },
