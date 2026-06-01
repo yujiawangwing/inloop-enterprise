@@ -175,6 +175,19 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               </button>
             )}
 
+            {task.creator_id && task.owner_id && task.creator_id !== task.owner_id && (
+              <p
+                className={cn(
+                  "mt-1.5 text-foreground/40",
+                  isFamily ? "text-[12px]" : "text-[10px]",
+                )}
+              >
+                来自 {getMockUserById(task.creator_id)?.label ?? "同事"} 的协同指派
+              </p>
+            )}
+
+
+
             {/* Console-mode status label */}
             {!isFamily && (
               <div className="mt-3 flex items-center gap-2">
