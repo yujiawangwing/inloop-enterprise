@@ -250,7 +250,7 @@ function Index() {
           await supabase
             .from("tasks")
             .delete()
-            .eq("user_id", uid)
+            .eq("owner_id", uid)
             .in("type", ["temporary", "routine"])
             .eq("execution_date", today)
             .eq("is_completed", false);
