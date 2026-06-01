@@ -776,6 +776,21 @@ function Index() {
         </section>
       )}
 
+      <PendingInbox
+        tasks={pendingTasks.map<PendingTask>((t) => ({
+          id: t.id,
+          time: t.time,
+          title: t.title,
+          note: t.note ?? null,
+          image_url: t.image_url ?? null,
+          execution_date: t.execution_date ?? null,
+          creator_id: t.creator_id ?? null,
+          owner_id: t.owner_id ?? null,
+        }))}
+      />
+
+
+
       <section className="px-6 pb-40 pt-3">
         <div className="flex items-center gap-3 pb-1">
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
