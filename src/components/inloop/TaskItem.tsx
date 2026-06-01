@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
-import { Check, Link2, Trash2 } from "lucide-react";
+import { Check, Trash2, MessageSquarePlus } from "lucide-react";
 import type { Mode } from "./ModeSwitch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageLightbox } from "./ImageLightbox";
+import { supabase } from "@/integrations/supabase/client";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -17,6 +18,8 @@ export interface Task {
   done: boolean;
   type: TaskType;
   execution_date?: string;
+  feedback_tag?: string | null;
+  comment?: string | null;
 }
 
 interface Props {
@@ -26,11 +29,46 @@ interface Props {
   onDelete?: (id: string) => void;
 }
 
+const FEEDBACK_TAGS: { key: string; label: string }[] = [
+  { key: "received", label: "👍 收到" },
+  { key: "conflict", label: "⏰ 时间冲突" },
+  { key: "later", label: "📍 稍后处理" },
+];
+
 export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
-  const isFamily = mode === "family";
-  const isPlanner = mode === "planner";
+  const isFamily = mode === "family"; // 看板模式 (Glanceable)
+  const isPlanner = mode === "planner"; // 控制台模式 (Console)
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [feedbackTag, setFeedbackTag] = useState<string | null>(task.feedback_tag ?? null);
+  const [comment, setComment] = useState<string>(task.comment ?? "");
+  const [commentDraft, setCommentDraft] = useState<string>(task.comment ?? "");
+  const [commentOpen, setCommentOpen] = useState(false);
+  const isVirtual = task.id.startsWith("vr-");
+
+  useEffect(() => {
+    setFeedbackTag(task.feedback_tag ?? null);
+    setComment(task.comment ?? "");
+    setCommentDraft(task.comment ?? "");
+  }, [task.feedback_tag, task.comment]);
+
+  async function pickTag(key: string) {
+    const next = feedbackTag === key ? null : key;
+    setFeedbackTag(next);
+    if (isVirtual) return;
+    await supabase.from("tasks").update({ feedback_tag: next }).eq("id", task.id);
+  }
+
+  async function saveComment() {
+    const value = commentDraft.trim();
+    setComment(value);
+    setCommentOpen(false);
+    if (isVirtual) return;
+    await supabase.from("tasks").update({ comment: value || null }).eq("id", task.id);
+  }
+
+  const activeTagLabel =
+    FEEDBACK_TAGS.find((t) => t.key === feedbackTag)?.label ?? null;
 
   return (
     <div className="relative flex items-stretch gap-4">
@@ -48,7 +86,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
         <span
           className={cn(
             "inline-flex items-center gap-1 font-medium tracking-[0.14em] text-foreground/70 transition-opacity",
-            isFamily ? "text-[15px]" : "text-[11px]",
+            isFamily ? "text-[17px]" : "text-[11px]",
             task.done && "opacity-40",
           )}
         >
@@ -64,7 +102,6 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
           )}
           {task.time}
         </span>
-
       </div>
 
       <div
@@ -98,7 +135,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
             <p
               className={cn(
                 "break-words font-medium leading-snug text-foreground transition-all",
-                isFamily ? "text-[21px] tracking-tight" : "text-[15px]",
+                isFamily ? "text-[23px] tracking-tight" : "text-[15px]",
                 task.done && "line-through decoration-foreground/50 decoration-[1.25px] text-foreground/60",
               )}
             >
@@ -115,20 +152,6 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               </p>
             )}
 
-            {task.link && !isFamily && (
-              <a
-                href={task.link}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 flex w-full max-w-full items-center gap-1.5 overflow-hidden rounded-md bg-primary/8 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15"
-              >
-                <Link2 className="h-3 w-3 shrink-0" />
-                <span className="block w-full min-w-0 flex-1 truncate">
-                  {task.link.replace(/^https?:\/\//, "")}
-                </span>
-              </a>
-            )}
-
             {task.image_url && (
               <button
                 type="button"
@@ -136,7 +159,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                 aria-label="查看行程截图大图"
                 className={cn(
                   "group/img mt-2 block overflow-hidden rounded-lg border border-foreground/10 bg-neutral-50 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]",
-                  isFamily ? "h-24 w-24" : "h-16 w-16",
+                  isFamily ? "h-28 w-28" : "h-16 w-16",
                 )}
               >
                 <img
@@ -148,35 +171,32 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               </button>
             )}
 
-
-
-            {/* Planner-mode status label */}
+            {/* Console-mode status label */}
             {!isFamily && (
               <div className="mt-3 flex items-center gap-2">
                 <span
                   aria-hidden
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    task.done ? "bg-primary" : "bg-foreground/30",
+                    task.done ? "bg-primary" : "bg-amber-500",
                   )}
                 />
                 <span
                   className={cn(
                     "text-[10.5px] font-medium tracking-[0.08em]",
-                    task.done ? "text-primary" : "text-foreground/55",
+                    task.done ? "text-primary" : "text-amber-600",
                   )}
                 >
-                  {task.done ? "已完成" : "待处理"}
+                  {task.done ? "已闭环 · Closed" : "进行中 · In Progress"}
                 </span>
               </div>
             )}
           </div>
 
-
           {isFamily ? (
             <button
               type="button"
-              aria-label={task.done ? "Mark as not done" : "Mark as done"}
+              aria-label={task.done ? "标记为未闭环" : "标记为已闭环"}
               onClick={() => onToggle(task.id)}
               className={cn(
                 "shrink-0 self-center rounded-2xl px-5 py-4 text-[19px] font-bold tracking-[0.12em] transition-all active:scale-[0.97]",
@@ -185,7 +205,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                   : "bg-primary text-primary-foreground shadow-[0_8px_24px_-10px_rgba(107,122,106,0.65)] hover:bg-primary/90",
               )}
             >
-              {task.done ? "✓ 已完成" : "已完成"}
+              {task.done ? "✓ 已闭环" : "确认闭环"}
             </button>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -232,7 +252,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               )}
               <button
                 type="button"
-                aria-label={task.done ? "Mark as not done" : "Mark as done"}
+                aria-label={task.done ? "标记为未闭环" : "标记为已闭环"}
                 onClick={() => onToggle(task.id)}
                 className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background transition-all",
@@ -251,48 +271,101 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
           )}
         </div>
 
-        {/* Family-mode SOP bubble (Pro: link + AI summary) */}
-        {isFamily && task.note && (
-          <div
-            className={cn(
-              "mt-3 ml-1 rounded-2xl border border-primary/15 bg-[oklch(0.955_0.012_140)] px-5 py-4 transition-opacity",
-              task.done && "opacity-50",
+        {/* —— Glanceable mode: 只展示已就位的批注 / 状态签收，不暴露繁琐控件 —— */}
+        {isFamily && (activeTagLabel || comment) && (
+          <div className="mt-2 ml-1 flex flex-wrap items-center gap-2">
+            {activeTagLabel && (
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[14px] font-medium tracking-tight text-primary">
+                {activeTagLabel}
+              </span>
             )}
-          >
-            <p className="text-[10px] font-medium tracking-[0.14em] text-primary/80">
-              💡 AI 提炼要领
-            </p>
-            <p className="mt-1.5 break-words text-[17px] font-semibold leading-relaxed tracking-tight text-foreground">
-              {task.note}
-            </p>
-            {task.link && (
-              <a
-                href={task.link}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex items-center gap-1.5 text-[15px] font-medium text-primary underline decoration-primary/40 decoration-[1.5px] underline-offset-[5px] transition-colors hover:decoration-primary"
-              >
-                🔗 查看原教程/视频
-              </a>
+            {comment && (
+              <span className="rounded-full bg-foreground/[0.06] px-3 py-1 text-[14px] text-foreground/75">
+                📝 {comment}
+              </span>
             )}
           </div>
         )}
 
-        {/* Family-mode plain link (Free: link only, no AI summary) */}
-        {isFamily && task.link && !task.note && (
-          <a
-            href={task.link}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "mt-2 ml-1 inline-flex items-center gap-1.5 text-[15px] font-medium text-foreground underline decoration-foreground/40 decoration-[1.5px] underline-offset-[5px] transition-colors hover:decoration-foreground",
-              task.done && "opacity-50",
-            )}
-          >
-            🔗 查看原教程/视频
-          </a>
-        )}
+        {/* —— Console mode: 完整的快捷批注 / 反馈系统 —— */}
+        {!isFamily && (
+          <div className="mt-2 ml-1 flex flex-wrap items-center gap-1.5">
+            {FEEDBACK_TAGS.map((t) => {
+              const active = feedbackTag === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => pickTag(t.key)}
+                  aria-pressed={active}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[10.5px] tracking-tight transition-all active:scale-95",
+                    active
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-foreground/10 bg-card text-foreground/55 hover:border-foreground/25 hover:text-foreground/80",
+                  )}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
 
+            <Popover open={commentOpen} onOpenChange={(o) => { setCommentOpen(o); if (o) setCommentDraft(comment); }}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] tracking-tight transition-all active:scale-95",
+                    comment
+                      ? "border-foreground/20 bg-foreground/[0.04] text-foreground/80"
+                      : "border-dashed border-foreground/15 bg-transparent text-foreground/45 hover:border-foreground/30 hover:text-foreground/70",
+                  )}
+                  aria-label="添加批注"
+                >
+                  <MessageSquarePlus className="h-3 w-3" />
+                  {comment ? comment : "添加批注"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="w-64 rounded-xl border-foreground/10 bg-card p-3 shadow-[0_8px_30px_-12px_rgba(34,34,34,0.18)]"
+              >
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.16em] text-foreground/55">
+                  快捷批注
+                </p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={commentDraft}
+                  maxLength={80}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); saveComment(); }
+                  }}
+                  placeholder="如：需准备 B 版 PPT"
+                  className="mt-2 w-full rounded-md border border-foreground/15 bg-background px-2.5 py-1.5 text-[12.5px] text-foreground placeholder:text-foreground/35 focus:border-primary focus:outline-none"
+                />
+                <div className="mt-2.5 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setCommentDraft(""); saveComment(); }}
+                    className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-foreground/55 transition-all hover:bg-foreground/5 hover:text-foreground"
+                  >
+                    清除
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveComment}
+                    className="rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground transition-all hover:bg-primary/90"
+                  >
+                    钉上批注
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
       </div>
     </div>
   );
