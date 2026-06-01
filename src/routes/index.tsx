@@ -695,7 +695,7 @@ function Index() {
                 )}
               >
                 <span>
-                  {isToday ? "领导今日行程看板" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
+                  {isToday ? "今日核心要务" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
                 <CalendarIcon
                   className={cn(
