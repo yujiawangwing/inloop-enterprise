@@ -214,8 +214,8 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                 </h3>
                 <div className="mt-3 space-y-2">
                   {[
-                    { v: "planner" as const, label: "管理员模式", desc: "负责规划、编排日程、使用 AI 输入", Icon: Smartphone },
-                    { v: "family" as const, label: "全家看板", desc: "大字版日程、点击已完成", Icon: Users },
+                    { v: "planner" as const, label: "控制台模式", desc: "发布端：编排日程、AI 智能输入", Icon: Smartphone },
+                    { v: "family" as const, label: "看板模式", desc: "远视聚焦：放大核心时间块与截图缩略", Icon: Users },
                   ].map(({ v, label, desc, Icon }) => {
                     const active = mode === v;
                     return (
