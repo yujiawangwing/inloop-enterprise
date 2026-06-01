@@ -93,9 +93,9 @@ export function OwnerSelector({
         <div className="px-2 py-1.5 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-foreground/45">
           协同目标 · 可多选
         </div>
-        {MOCK_USER_LIST.map((u) => {
-          const checked = value.includes(u.id);
-          const isMe = u.id === currentUserId;
+        {userList.map((u) => {
+          const checked = value.includes(u.id) || (isMeId(u.id) && value.some(isMeId));
+          const isMe = isMeId(u.id);
           return (
             <button
               key={u.id}
