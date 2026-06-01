@@ -9,6 +9,8 @@ export interface DraftTask {
   link?: string;
   execution_date?: string; // YYYY-MM-DD, only for milestones
   image_url?: string; // 行程截图 / 邀请函附件
+  // —— 多人协同：本草稿要"影子复制"给哪些 owner ——
+  owner_ids?: string[];
   // —— 周期任务字段 ——
   is_recurring?: boolean;
   recurrence_type?: RecurrenceType;
