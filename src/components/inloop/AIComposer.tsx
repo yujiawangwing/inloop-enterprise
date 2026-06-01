@@ -181,8 +181,8 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
           rows={2}
           placeholder={
             listening
-              ? "正在拾音中，请清晰口述工作指令...（再次点击麦克风停止）"
-              : "请输入或口述工作指令：如\"明天下午两点陪同领导参加半导体行业峰会\"..."
+              ? "正在拾音中，请清晰口述工作要务指令...（再次点击麦克风停止）"
+              : "请输入或口述工作要务指令：如\"6月2日下午两点参加半导体行业技术峰会\"..."
           }
           className="block w-full resize-none border-0 bg-transparent px-1 py-1 pr-8 text-[12.5px] leading-relaxed text-foreground placeholder:text-foreground/35 focus:outline-none"
         />
