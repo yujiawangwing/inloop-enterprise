@@ -229,20 +229,10 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label
-              htmlFor="link"
-              className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              🔗 链接/网址（可选）
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              📸 行程截图 / 邀请函（可选）
             </Label>
-            <Input
-              id="link"
-              type="text"
-              placeholder="粘贴小红书、公众号、菜谱视频等原文/链接..."
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="h-12 rounded-xl border-foreground/25 bg-background text-base"
-            />
+            <ImageUploader value={imageUrl} onChange={setImageUrl} />
           </div>
 
 
