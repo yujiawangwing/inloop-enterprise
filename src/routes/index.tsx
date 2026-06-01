@@ -269,6 +269,7 @@ function Index() {
       const targetDow = isoDow(dateObj);
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
+      console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
@@ -276,6 +277,7 @@ function Index() {
         .eq("flow_status", "accepted")
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
+      console.log("[Dashboard] 从数据库捞出的原始 tasks 行 =", dayTaskRows);
 
       // 动作 B：routines 表全量周期任务，前端按 recurrence_days 过滤
       const { data: routineRows } = await supabase
