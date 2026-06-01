@@ -325,7 +325,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
               {/* Sync code */}
               <section className="mt-7">
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  全家同步绑定
+                  多端联动同步
                 </h3>
                 <div className="mt-3 rounded-xl border border-foreground/10 bg-card p-4">
                   <p className="text-[10.5px] tracking-[0.14em] text-muted-foreground">
@@ -344,7 +344,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    长辈端打开 Inloop 输入此码，即可一键连入此空间。
+                    查看端打开 Inloop 输入此码，即可一键接入此工作空间。
                   </p>
 
                   <div className="mt-4 space-y-1.5 border-t border-foreground/8 pt-3">
