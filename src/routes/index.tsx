@@ -235,7 +235,7 @@ function Index() {
         await supabase
           .from("tasks")
           .delete()
-          .eq("user_id", userId)
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine"])
           .lt("execution_date", today);
         const meltHour = new Date().getHours();
@@ -243,7 +243,7 @@ function Index() {
           await supabase
             .from("tasks")
             .delete()
-            .eq("user_id", userId)
+            .eq("user_id", uid)
             .in("type", ["temporary", "routine"])
             .eq("execution_date", today)
             .eq("is_completed", false);
@@ -257,7 +257,7 @@ function Index() {
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", uid)
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
@@ -265,7 +265,7 @@ function Index() {
       const { data: routineRows } = await supabase
         .from("routines")
         .select("id, time, title, note, recurrence_days")
-        .eq("user_id", userId)
+        .eq("user_id", uid)
         .eq("active", true);
 
       const matchingRoutines = (routineRows ?? []).filter((r) => {
@@ -283,7 +283,7 @@ function Index() {
           note: r.note,
           execution_date: today,
           routine_id: r.id,
-          user_id: userId,
+          user_id: uid,
         }));
         await supabase
           .from("tasks")
@@ -293,7 +293,7 @@ function Index() {
         const { data: refreshed } = await supabase
           .from("tasks")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine", "milestone"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -330,7 +330,7 @@ function Index() {
         const { data: todayRows } = await supabase
           .from("tasks")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", uid)
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -341,7 +341,7 @@ function Index() {
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", uid)
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
