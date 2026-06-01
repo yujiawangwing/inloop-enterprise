@@ -575,6 +575,7 @@ function Index() {
           title: d.title,
           note: d.note,
           link: d.link,
+          image_url: d.image_url ?? null,
           execution_date: d.execution_date ?? today,
           user_id: userId,
         }));
