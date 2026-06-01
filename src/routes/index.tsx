@@ -105,6 +105,9 @@ interface DbTask {
   routine_id: string | null;
   feedback_tag?: string | null;
   comment?: string | null;
+  creator_id?: string | null;
+  owner_id?: string | null;
+  flow_status?: string | null;
 }
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
@@ -126,6 +129,9 @@ function rowToTask(r: DbTask): Task {
     done: r.is_completed,
     feedback_tag: r.feedback_tag ?? null,
     comment: r.comment ?? null,
+    creator_id: r.creator_id ?? null,
+    owner_id: r.owner_id ?? null,
+    flow_status: r.flow_status ?? null,
   };
 }
 
