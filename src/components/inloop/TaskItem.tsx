@@ -3,6 +3,7 @@ import { Check, Link2, Trash2 } from "lucide-react";
 import type { Mode } from "./ModeSwitch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState } from "react";
+import { ImageLightbox } from "./ImageLightbox";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -12,6 +13,7 @@ export interface Task {
   title: string;
   note?: string;
   link?: string;
+  image_url?: string;
   done: boolean;
   type: TaskType;
   execution_date?: string;
@@ -28,9 +30,14 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
   const isFamily = mode === "family";
   const isPlanner = mode === "planner";
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
     <div className="relative flex items-stretch gap-4">
+      <ImageLightbox
+        src={lightboxOpen ? task.image_url ?? null : null}
+        onClose={() => setLightboxOpen(false)}
+      />
       {/* timeline rail */}
       <div
         className={cn(
@@ -121,6 +128,27 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                 </span>
               </a>
             )}
+
+            {task.image_url && (
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                aria-label="查看行程截图大图"
+                className={cn(
+                  "group/img mt-2 block overflow-hidden rounded-lg border border-foreground/10 bg-neutral-50 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]",
+                  isFamily ? "h-24 w-24" : "h-16 w-16",
+                )}
+              >
+                <img
+                  src={task.image_url}
+                  alt="行程截图缩略图"
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform group-hover/img:scale-105"
+                />
+              </button>
+            )}
+
+
 
             {/* Planner-mode status label */}
             {!isFamily && (

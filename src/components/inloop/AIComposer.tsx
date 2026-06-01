@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/compressImage";
 
 interface Props {
   onSync: (instruction: string, attachmentUrl: string) => void;
@@ -23,24 +24,34 @@ type SpeechRecognitionLike = {
 export function AIComposer({ onSync, remaining, loading = false }: Props) {
   const [instruction, setInstruction] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
-  const canSend = instruction.trim().length > 0 || attachmentUrl.trim().length > 0;
+  const canSend = (instruction.trim().length > 0 || attachmentUrl.trim().length > 0) && !uploading;
 
   useEffect(() => {
     return () => {
       try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function clearAttachment() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setAttachmentUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   function submit() {
     if (!canSend || loading) return;
     onSync(instruction.trim(), attachmentUrl.trim());
     setInstruction("");
-    setAttachmentUrl("");
+    clearAttachment();
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -50,19 +61,40 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       alert("请选择图片文件");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert("图片不能超过 10MB");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("图片不能超过 20MB");
       return;
     }
+
+    // 1) 零延迟本地预览
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const localUrl = URL.createObjectURL(file);
+    setPreviewUrl(localUrl);
+    setAttachmentUrl("");
     setUploading(true);
+
     try {
-      const ext = file.name.split(".").pop() ?? "png";
-      const path = `agenda/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      // 2) Canvas 极限压缩（≤1200px，JPEG q=0.78）
+      let compressed: File;
+      try {
+        compressed = await compressImage(file, { maxDim: 1200, quality: 0.78 });
+      } catch (err) {
+        console.warn("compressImage failed, falling back to original:", err);
+        compressed = file;
+      }
+
+      // 3) 上传到 Lovable Cloud Storage
+      const path = `agenda/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
       const { error } = await supabase.storage
         .from("agenda-attachments")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
+        .upload(path, compressed, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: "image/jpeg",
+        });
       if (error) {
         alert(`上传失败：${error.message}`);
+        clearAttachment();
         return;
       }
       const { data } = supabase.storage.from("agenda-attachments").getPublicUrl(path);
@@ -170,49 +202,56 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       </div>
 
       {/* 图片附件上传 */}
-      <div className="mt-1">
-        {attachmentUrl ? (
-          <div className="flex items-center gap-2 rounded-lg border border-foreground/10 bg-neutral-50 px-2 py-1.5">
+      <div className="mt-1.5 flex items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          className="hidden"
+        />
+
+        {previewUrl ? (
+          <div className="relative shrink-0">
             <img
-              src={attachmentUrl}
-              alt="行程截图预览"
-              className="h-7 w-7 shrink-0 rounded object-cover"
+              src={previewUrl}
+              alt="行程截图本地预览"
+              className="h-16 w-16 rounded-lg border border-foreground/12 object-cover shadow-sm"
             />
-            <span className="min-w-0 flex-1 truncate text-[10.5px] text-foreground/60">
-              已上传行程截图
-            </span>
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => setAttachmentUrl("")}
+              onClick={clearAttachment}
               aria-label="移除附件"
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-foreground/40 hover:bg-foreground/5 hover:text-foreground/70"
+              className="absolute -right-1.5 -top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow ring-2 ring-background transition-all hover:scale-105 active:scale-95"
             >
-              <X className="h-3 w-3" />
+              <X className="h-2.5 w-2.5 stroke-[2.5]" />
             </button>
           </div>
         ) : (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFile}
-              className="hidden"
-            />
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 bg-neutral-50/60 px-2.5 py-1.5 text-[10.5px] font-medium text-foreground/55 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
-            >
-              {uploading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ImagePlus className="h-3 w-3" />
-              )}
-              {uploading ? "上传中..." : "上传行程截图 / 邀请函图片"}
-            </button>
-          </>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 bg-neutral-50/60 px-2.5 py-1.5 text-[10.5px] font-medium text-foreground/55 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
+          >
+            <ImagePlus className="h-3 w-3" />
+            上传行程截图 / 邀请函图片
+          </button>
+        )}
+
+        {previewUrl && (
+          <span className="min-w-0 flex-1 text-[10.5px] leading-snug text-foreground/55">
+            {uploading
+              ? "正在压缩并上传截图..."
+              : attachmentUrl
+                ? "截图已就绪，可一并发送给 AI 解析"
+                : "本地预览中"}
+          </span>
         )}
       </div>
 

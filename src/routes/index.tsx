@@ -98,6 +98,7 @@ interface DbTask {
   title: string;
   note: string | null;
   link: string | null;
+  image_url: string | null;
   execution_date: string | null;
   is_completed: boolean;
   routine_id: string | null;
@@ -117,6 +118,7 @@ function rowToTask(r: DbTask): Task {
     title: r.title,
     note: r.note ?? undefined,
     link: r.link ?? undefined,
+    image_url: r.image_url ?? undefined,
     execution_date: r.execution_date ?? undefined,
     done: r.is_completed,
   };
@@ -527,9 +529,9 @@ function Index() {
     try {
       let parsed: DraftTask[];
       try {
-        parsed = await callDeepSeek(instruction, attachmentUrl);
+        // 图片附件不再当作链接喂给 AI，仅在发布时随任务一起存入 image_url
+        parsed = await callDeepSeek(instruction, "");
       } catch (err: unknown) {
-        // 严禁静默返回本地假日程 —— 必须把真实报错原因暴露给用户
         console.error("DeepSeek API 报错原因:", err);
         setDrafts([]);
         setVerifyOpen(true);
@@ -546,7 +548,11 @@ function Index() {
         alert("DeepSeek 返回了空数组，没识别出有效日程，换种说法再试一次～");
         return;
       }
-      setDrafts(parsed);
+      // 把上传好的截图 URL 附加到每一条草稿上
+      const withImage = attachmentUrl
+        ? parsed.map((d) => ({ ...d, image_url: attachmentUrl }))
+        : parsed;
+      setDrafts(withImage);
       setVerifyOpen(true);
       if (!isPro) setAiInputsRemaining((n) => Math.max(0, n - 1));
     } finally {
@@ -569,6 +575,7 @@ function Index() {
           title: d.title,
           note: d.note,
           link: d.link,
+          image_url: d.image_url ?? null,
           execution_date: d.execution_date ?? today,
           user_id: userId,
         }));
