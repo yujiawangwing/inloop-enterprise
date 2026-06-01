@@ -3,6 +3,7 @@ import { Check, Link2, Trash2 } from "lucide-react";
 import type { Mode } from "./ModeSwitch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState } from "react";
+import { ImageLightbox } from "./ImageLightbox";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -12,6 +13,7 @@ export interface Task {
   title: string;
   note?: string;
   link?: string;
+  image_url?: string;
   done: boolean;
   type: TaskType;
   execution_date?: string;
