@@ -49,12 +49,13 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
-export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
+export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props) {
   const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
@@ -70,12 +71,14 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
       date,
       recurrence,
       image_url: imageUrl ?? undefined,
+      owner_ids: ownerIds,
     });
     setTime("");
     setTitle("");
     setDate(new Date());
     setRecurrence("none");
     setImageUrl(null);
+    setOwnerIds([MOCK_USERS.me.id]);
     onOpenChange(false);
   }
 
