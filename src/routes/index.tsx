@@ -808,12 +808,13 @@ function Index() {
         </button>
       </div>
 
-      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} />
+      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} currentUserId={userId} />
       <VerificationModal
         open={verifyOpen}
         drafts={drafts}
         onCancel={() => setVerifyOpen(false)}
         onConfirm={publishDrafts}
+        currentUserId={userId}
       />
       <ThankYouToast show={thankShow} onDone={() => setThankShow(false)} />
       <PaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />
