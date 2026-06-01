@@ -255,7 +255,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
               {/* Voice alarm toggle */}
               <section className="mt-7">
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  长辈端强提醒
+                  到点语音强提醒
                 </h3>
                 <button
                   type="button"
