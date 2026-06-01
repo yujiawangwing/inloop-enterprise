@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
+import { ShieldCheck, Sparkles, Pencil, Repeat, Users } from "lucide-react";
 import type { DraftTask } from "@/lib/parseDraft";
 import { ImageUploader } from "./ImageUploader";
 import { ImageLightbox } from "./ImageLightbox";
+import { OwnerSelector } from "./OwnerSelector";
+import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
 
 interface Props {
   open: boolean;
   drafts: DraftTask[];
   onCancel: () => void;
   onConfirm: (finalDrafts: DraftTask[]) => void;
+  currentUserId?: string | null;
 }
 
 export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) {
