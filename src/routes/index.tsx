@@ -641,7 +641,7 @@ function Index() {
       if (oneOffDrafts.length > 0) {
         const rows = oneOffDrafts.flatMap((d) => {
           const targets =
-            d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId];
+            (d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [creatorId]).map(normalize);
           return targets.map((ownerId) => ({
             type: d.type,
             time: d.time,
