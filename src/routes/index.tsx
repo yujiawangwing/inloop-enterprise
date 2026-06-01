@@ -135,6 +135,8 @@ function isoToDate(iso: string): Date {
 }
 
 function Index() {
+  const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
@@ -154,6 +156,17 @@ function Index() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
+
+  // 高保真模拟登录守卫：未登录跳转到 /login
+  useEffect(() => {
+    const uid = getMockUserId();
+    if (!uid) {
+      navigate({ to: "/login", replace: true });
+      return;
+    }
+    setUserId(uid);
+  }, [navigate]);
+
 
   // Hydrate mode + voice toggle from localStorage (post-mount to avoid SSR mismatch)
   useEffect(() => {
