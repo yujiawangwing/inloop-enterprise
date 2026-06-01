@@ -631,6 +631,8 @@ function Index() {
   async function publishDrafts(finalDrafts: DraftTask[]) {
     const source = finalDrafts ?? drafts;
     const creatorId = userId ?? MOCK_USERS.me.id;
+    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid
+    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
