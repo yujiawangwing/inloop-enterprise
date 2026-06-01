@@ -473,55 +473,67 @@ function Index() {
     date: Date;
     recurrence: "none" | "daily" | "weekly";
     image_url?: string;
+    owner_ids: string[];
   }) {
-    const { time, title, date, recurrence, image_url } = payload;
+    const { time, title, date, recurrence, image_url, owner_ids } = payload;
+    const creatorId = userId ?? MOCK_USERS.me.id;
+    const targets = owner_ids.length > 0 ? owner_ids : [creatorId];
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const isFuture = iso > today;
 
     if (recurrence === "daily") {
-      const { data: routine } = await supabase
-        .from("routines")
-        .insert({ time, title, active: true, user_id: userId })
-        .select("id")
-        .single();
-      if (routine && !isFuture) {
-        await supabase.from("tasks").upsert(
-          [{
-            type: "routine" as const,
+      // 周期任务：为每个 owner 各创建一条 routine
+      for (const ownerId of targets) {
+        const flow = ownerId === creatorId ? "accepted" : "pending";
+        const { data: routine } = await supabase
+          .from("routines")
+          .insert({
             time,
             title,
-            image_url: image_url ?? null,
-            execution_date: today,
-            routine_id: routine.id,
-            user_id: userId,
-          }],
-          { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
-        );
+            active: true,
+            user_id: ownerId,
+            owner_id: ownerId,
+            creator_id: creatorId,
+            flow_status: flow,
+          })
+          .select("id")
+          .single();
+        if (routine && !isFuture) {
+          await supabase.from("tasks").upsert(
+            [{
+              type: "routine" as const,
+              time,
+              title,
+              image_url: image_url ?? null,
+              execution_date: today,
+              routine_id: routine.id,
+              user_id: ownerId,
+              owner_id: ownerId,
+              creator_id: creatorId,
+              flow_status: flow,
+            }],
+            { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
+          );
+        }
       }
       return;
     }
 
-    if (recurrence === "weekly" || isFuture) {
-      await supabase.from("tasks").insert({
-        type: "milestone",
-        time,
-        title,
-        image_url: image_url ?? null,
-        execution_date: iso,
-        user_id: userId,
-      });
-      return;
-    }
-
-    await supabase.from("tasks").insert({
-      type: "temporary",
+    const rows = targets.map((ownerId) => ({
+      type: (recurrence === "weekly" || isFuture ? "milestone" : "temporary") as
+        | "milestone"
+        | "temporary",
       time,
       title,
       image_url: image_url ?? null,
       execution_date: iso,
-      user_id: userId,
-    });
+      user_id: ownerId,
+      owner_id: ownerId,
+      creator_id: creatorId,
+      flow_status: ownerId === creatorId ? "accepted" : "pending",
+    }));
+    await supabase.from("tasks").insert(rows);
   }
 
 
