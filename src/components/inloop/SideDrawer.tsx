@@ -432,7 +432,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
 
               <div className="mt-auto pt-8">
                 <p className="text-center text-[9.5px] tracking-[0.22em] text-muted-foreground">
-                  HIGH-IQ FAMILY · INLOOP {isPro && "· PRO"}
+                  INLOOP ENTERPRISE {isPro && "· PRO"}
                 </p>
               </div>
             </>
