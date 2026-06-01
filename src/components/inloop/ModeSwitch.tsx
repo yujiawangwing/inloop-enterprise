@@ -8,8 +8,8 @@ interface Props {
 }
 
 const OPTIONS: { value: Mode; label: string }[] = [
-  { value: "planner", label: "管理员模式" },
-  { value: "family", label: "全家看板" },
+  { value: "planner", label: "助理输入端" },
+  { value: "family", label: "领导看板" },
 ];
 
 export function ModeSwitch({ mode, onChange }: Props) {
