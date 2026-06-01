@@ -50,7 +50,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
-  const [link, setLink] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
