@@ -351,7 +351,7 @@ function Index() {
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
-        .eq("user_id", uid)
+        .eq("owner_id", uid)
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
