@@ -9,7 +9,7 @@ interface Props {
 const compareRows = [
   { feature: "AI 智能同步", free: "每月 3 次", pro: "无限次一键排班" },
   { feature: "网页链接提炼", free: "仅展示原链接", pro: "AI 自动提炼重点" },
-  { feature: "终端设备绑定", free: "最多 2 台", pro: "全家无限绑定" },
+  { feature: "终端设备绑定", free: "最多 2 台", pro: "多端无限联动" },
 ];
 
 export function PaywallModal({ open, onOpenChange }: Props) {

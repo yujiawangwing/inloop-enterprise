@@ -40,8 +40,8 @@ function formatRecurrence(r: Pick<Routine, "recurrence_type" | "recurrence_days"
 
 const SYNC_CODE = "IL-8839";
 const DEVICES = [
-  { name: "管理员 · iPhone 15 Pro", role: "planner" },
-  { name: "客厅 iPad · 全家看板", role: "family" },
+  { name: "控制台 · iPhone 15 Pro", role: "planner" },
+  { name: "桌面 iPad · 核心日程看板", role: "family" },
 ];
 
 export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = false, onTogglePro, onRequestPaywall, voiceAlarmOn = true, onVoiceAlarmChange }: Props) {
@@ -214,8 +214,8 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                 </h3>
                 <div className="mt-3 space-y-2">
                   {[
-                    { v: "planner" as const, label: "管理员模式", desc: "负责规划、编排日程、使用 AI 输入", Icon: Smartphone },
-                    { v: "family" as const, label: "全家看板", desc: "大字版日程、点击已完成", Icon: Users },
+                    { v: "planner" as const, label: "控制台模式", desc: "发布端：编排日程、AI 智能输入", Icon: Smartphone },
+                    { v: "family" as const, label: "看板模式", desc: "远视聚焦：放大核心时间块与截图缩略", Icon: Users },
                   ].map(({ v, label, desc, Icon }) => {
                     const active = mode === v;
                     return (
@@ -255,7 +255,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
               {/* Voice alarm toggle */}
               <section className="mt-7">
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  长辈端强提醒
+                  到点语音强提醒
                 </h3>
                 <button
                   type="button"
@@ -276,11 +276,11 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                     )}
                     <span className="min-w-0">
                       <span className="block text-[13.5px] font-medium tracking-tight text-foreground">
-                        {voiceAlarmOn ? "🔊 大喇叭强提醒已开启" : "🔇 静默通知模式"}
+                        {voiceAlarmOn ? "🔊 到点语音强提醒已开启" : "🔇 静默通知模式"}
                       </span>
                       <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
                         {voiceAlarmOn
-                          ? "到点自动语音播报 + 全屏震动唤醒长辈"
+                          ? "到点自动语音播报 + 全屏唤醒查看端"
                           : "仅弹窗显示，不出声不打扰"}
                       </span>
                     </span>
@@ -325,7 +325,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
               {/* Sync code */}
               <section className="mt-7">
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  全家同步绑定
+                  多端联动同步
                 </h3>
                 <div className="mt-3 rounded-xl border border-foreground/10 bg-card p-4">
                   <p className="text-[10.5px] tracking-[0.14em] text-muted-foreground">
@@ -344,7 +344,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    长辈端打开 Inloop 输入此码，即可一键连入此空间。
+                    查看端打开 Inloop 输入此码，即可一键接入此工作空间。
                   </p>
 
                   <div className="mt-4 space-y-1.5 border-t border-foreground/8 pt-3">
@@ -432,7 +432,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
 
               <div className="mt-auto pt-8">
                 <p className="text-center text-[9.5px] tracking-[0.22em] text-muted-foreground">
-                  HIGH-IQ FAMILY · INLOOP {isPro && "· PRO"}
+                  INLOOP ENTERPRISE {isPro && "· PRO"}
                 </p>
               </div>
             </>

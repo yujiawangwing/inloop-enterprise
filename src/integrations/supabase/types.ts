@@ -52,8 +52,10 @@ export type Database = {
       }
       tasks: {
         Row: {
+          comment: string | null
           created_at: string
           execution_date: string | null
+          feedback_tag: string | null
           id: string
           image_url: string | null
           is_completed: boolean
@@ -66,8 +68,10 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          comment?: string | null
           created_at?: string
           execution_date?: string | null
+          feedback_tag?: string | null
           id?: string
           image_url?: string | null
           is_completed?: boolean
@@ -80,8 +84,10 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          comment?: string | null
           created_at?: string
           execution_date?: string | null
+          feedback_tag?: string | null
           id?: string
           image_url?: string | null
           is_completed?: boolean

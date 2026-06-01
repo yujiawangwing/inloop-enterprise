@@ -102,6 +102,8 @@ interface DbTask {
   execution_date: string | null;
   is_completed: boolean;
   routine_id: string | null;
+  feedback_tag?: string | null;
+  comment?: string | null;
 }
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
@@ -121,6 +123,8 @@ function rowToTask(r: DbTask): Task {
     image_url: r.image_url ?? undefined,
     execution_date: r.execution_date ?? undefined,
     done: r.is_completed,
+    feedback_tag: r.feedback_tag ?? null,
+    comment: r.comment ?? null,
   };
 }
 
@@ -648,7 +652,7 @@ function Index() {
               <Menu className="h-[15px] w-[15px] stroke-[1.75]" />
             </button>
             <span className="rounded-full border border-foreground/15 px-2 py-0.5 text-[9.5px] font-medium tracking-[0.14em] text-foreground/65">
-              {isFamily ? "领导今日行程看板" : `助理输入端${isPro ? " · Pro" : ""}`}
+              {isFamily ? "看板模式 · GLANCEABLE" : `控制台${isPro ? " · Pro" : ""}`}
             </span>
 
           </div>
@@ -695,7 +699,7 @@ function Index() {
                 )}
               >
                 <span>
-                  {isToday ? "领导今日行程看板" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
+                  {isToday ? "今日核心要务" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
                 <CalendarIcon
                   className={cn(

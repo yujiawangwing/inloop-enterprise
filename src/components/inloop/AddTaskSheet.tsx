@@ -98,7 +98,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
             新建任务
           </SheetTitle>
           <SheetDescription className="text-[12px] uppercase tracking-[0.12em] text-muted-foreground">
-            添加到今日时间轴或未来日程
+            添加到核心日程看板或未来行程
           </SheetDescription>
         </SheetHeader>
 
