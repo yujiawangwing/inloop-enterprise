@@ -520,7 +520,9 @@ function Index() {
   }) {
     const { time, title, date, recurrence, image_url, owner_ids } = payload;
     const creatorId = userId ?? MOCK_USERS.me.id;
-    const targets = owner_ids.length > 0 ? owner_ids : [creatorId];
+    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid，保证写入与看板过滤完全对齐
+    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const targets = (owner_ids.length > 0 ? owner_ids : [creatorId]).map(normalize);
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const isFuture = iso > today;
