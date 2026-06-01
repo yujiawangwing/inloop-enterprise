@@ -15,7 +15,7 @@ interface Props {
   currentUserId?: string | null;
 }
 
-export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) {
+export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editable, setEditable] = useState<DraftTask[]>(drafts);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
