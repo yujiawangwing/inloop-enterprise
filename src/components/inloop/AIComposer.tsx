@@ -51,7 +51,7 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
     if (!canSend || loading) return;
     onSync(instruction.trim(), attachmentUrl.trim());
     setInstruction("");
-    setAttachmentUrl("");
+    clearAttachment();
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -61,19 +61,40 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       alert("请选择图片文件");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert("图片不能超过 10MB");
+    if (file.size > 20 * 1024 * 1024) {
+      alert("图片不能超过 20MB");
       return;
     }
+
+    // 1) 零延迟本地预览
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const localUrl = URL.createObjectURL(file);
+    setPreviewUrl(localUrl);
+    setAttachmentUrl("");
     setUploading(true);
+
     try {
-      const ext = file.name.split(".").pop() ?? "png";
-      const path = `agenda/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      // 2) Canvas 极限压缩（≤1200px，JPEG q=0.78）
+      let compressed: File;
+      try {
+        compressed = await compressImage(file, { maxDim: 1200, quality: 0.78 });
+      } catch (err) {
+        console.warn("compressImage failed, falling back to original:", err);
+        compressed = file;
+      }
+
+      // 3) 上传到 Lovable Cloud Storage
+      const path = `agenda/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
       const { error } = await supabase.storage
         .from("agenda-attachments")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
+        .upload(path, compressed, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: "image/jpeg",
+        });
       if (error) {
         alert(`上传失败：${error.message}`);
+        clearAttachment();
         return;
       }
       const { data } = supabase.storage.from("agenda-attachments").getPublicUrl(path);
