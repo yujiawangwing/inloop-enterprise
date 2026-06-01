@@ -24,6 +24,7 @@ export type Database = {
           recurrence_type: string
           time: string
           title: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean
@@ -34,6 +35,7 @@ export type Database = {
           recurrence_type?: string
           time: string
           title: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean
@@ -44,6 +46,7 @@ export type Database = {
           recurrence_type?: string
           time?: string
           title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -52,6 +55,7 @@ export type Database = {
           created_at: string
           execution_date: string | null
           id: string
+          image_url: string | null
           is_completed: boolean
           link: string | null
           note: string | null
@@ -59,11 +63,13 @@ export type Database = {
           time: string
           title: string
           type: Database["public"]["Enums"]["task_type"]
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           execution_date?: string | null
           id?: string
+          image_url?: string | null
           is_completed?: boolean
           link?: string | null
           note?: string | null
@@ -71,11 +77,13 @@ export type Database = {
           time: string
           title: string
           type?: Database["public"]["Enums"]["task_type"]
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           execution_date?: string | null
           id?: string
+          image_url?: string | null
           is_completed?: boolean
           link?: string | null
           note?: string | null
@@ -83,6 +91,7 @@ export type Database = {
           time?: string
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
+          user_id?: string | null
         }
         Relationships: [
           {
