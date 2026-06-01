@@ -9,6 +9,7 @@ import { AIComposer } from "@/components/inloop/AIComposer";
 import { VerificationModal } from "@/components/inloop/VerificationModal";
 import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
+import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { getMockUserId } from "@/lib/mockAuth";
