@@ -156,18 +156,22 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
                   {d.title}
                 </p>
 
-                {d.link && (
-                  <a
-                    href={d.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 flex max-w-full items-start gap-1.5 rounded-md bg-primary/8 px-2 py-1.5 text-[11.5px] font-medium text-primary hover:bg-primary/15"
+                {d.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(d.image_url ?? null)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-foreground/10 bg-background p-1.5 transition-all hover:border-primary/40 hover:bg-primary/5"
+                    aria-label="查看大图"
                   >
-                    <Link2 className="mt-0.5 h-3 w-3 shrink-0" />
-                    <span className="min-w-0 flex-1 break-all">
-                      🔗 {d.link.replace(/^https?:\/\//, "")}
+                    <img
+                      src={d.image_url}
+                      alt="行程截图"
+                      className="h-12 w-12 rounded-md object-cover"
+                    />
+                    <span className="pr-2 text-[10.5px] font-medium text-foreground/60">
+                      📸 行程截图（点击查看大图）
                     </span>
-                  </a>
+                  </button>
                 )}
 
                 {d.note && (
