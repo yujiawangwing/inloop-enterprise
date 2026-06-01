@@ -1,0 +1,749 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Menu, Calendar as CalendarIcon } from "lucide-react";
+import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
+import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
+import type { Mode } from "@/components/inloop/ModeSwitch";
+import { SideDrawer } from "@/components/inloop/SideDrawer";
+import { AIComposer } from "@/components/inloop/AIComposer";
+import { VerificationModal } from "@/components/inloop/VerificationModal";
+import { ThankYouToast } from "@/components/inloop/ThankYouToast";
+import { PaywallModal } from "@/components/inloop/PaywallModal";
+import { type DraftTask } from "@/lib/parseDraft";
+import { supabase } from "@/integrations/supabase/client";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+import { parseDraftWithDeepSeek, type DeepSeekDraft } from "@/lib/deepseek.functions";
+import { WakeAlarmOverlay } from "@/components/inloop/WakeAlarmOverlay";
+import { useTaskAlarm } from "@/hooks/useTaskAlarm";
+
+const VOICE_KEY = "inloop:voiceAlarm";
+
+async function callDeepSeek(instruction: string, pastedLink: string): Promise<DraftTask[]> {
+  // 强行注入用户设备本地时间，避免凌晨 UTC 错位导致 AI 日期解析 -1 天
+  const now = new Date();
+  const localBaseline = {
+    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    dow: now.getDay() === 0 ? 7 : now.getDay(),
+  };
+  const arr = (await parseDraftWithDeepSeek({
+    data: { instruction, pastedLink, localBaseline },
+  })) as DeepSeekDraft[];
+  if (!Array.isArray(arr)) {
+    throw new Error("DeepSeek 返回值不是 JSON 数组");
+  }
+
+  return arr.map<DraftTask>((d, index) => {
+    if (!d || !String(d.title ?? "").trim()) {
+      throw new Error(`DeepSeek 第 ${index + 1} 条任务缺少 title 字段`);
+    }
+    const rawTime = String(d.time ?? "").trim();
+    const normalizedTime = rawTime.replace(/^(\d):(\d{2})$/, "0$1:$2");
+    if (!/^\d{2}:\d{2}$/.test(normalizedTime)) {
+      throw new Error(`DeepSeek 第 ${index + 1} 条任务 time 字段无效：${rawTime || "空"}`);
+    }
+    const isRecurring = Boolean(d.is_recurring);
+    let recurrenceType: "daily" | "weekly" | null = null;
+    let recurrenceDays: number[] | null = null;
+    if (isRecurring) {
+      recurrenceType =
+        d.recurrence_type === "weekly" ? "weekly" : "daily";
+      const days = Array.isArray(d.recurrence_days)
+        ? d.recurrence_days.filter((n) => Number.isInteger(n) && n >= 1 && n <= 7)
+        : [];
+      recurrenceDays =
+        recurrenceType === "daily" || days.length === 0
+          ? [1, 2, 3, 4, 5, 6, 7]
+          : Array.from(new Set(days)).sort();
+    }
+    // —— 解析 AI 返回的 date 字段 ——
+    const todayStr = todayISO();
+    const rawDate = String(d.date ?? "").trim();
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayStr;
+    // 单次任务：若 AI 给出的日期晚于今天，自动归类为 milestone（未来日程）
+    const draftType: DraftTask["type"] =
+      !isRecurring && validDate > todayStr ? "milestone" : "temporary";
+    return {
+      type: draftType,
+      time: normalizedTime,
+      title: String(d.title).slice(0, 80),
+      link: d.link ?? undefined,
+      note: d.ai_summary ?? undefined,
+      execution_date: validDate,
+      is_recurring: isRecurring,
+      recurrence_type: recurrenceType,
+      recurrence_days: recurrenceDays,
+    };
+  });
+}
+
+
+
+
+export const Route = createFileRoute("/")({
+  component: Index,
+});
+
+const MODE_KEY = "inloop:mode";
+
+interface DbTask {
+  id: string;
+  type: TaskType;
+  time: string;
+  title: string;
+  note: string | null;
+  link: string | null;
+  execution_date: string | null;
+  is_completed: boolean;
+  routine_id: string | null;
+}
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function rowToTask(r: DbTask): Task {
+  return {
+    id: r.id,
+    type: r.type,
+    time: r.time,
+    title: r.title,
+    note: r.note ?? undefined,
+    link: r.link ?? undefined,
+    execution_date: r.execution_date ?? undefined,
+    done: r.is_completed,
+  };
+}
+
+function isoDow(d: Date): number {
+  const js = d.getDay(); // 0=Sun..6=Sat
+  return js === 0 ? 7 : js;
+}
+function dateToISO(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function isoToDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function Index() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
+  const [milestones, setMilestones] = useState<Task[]>([]);
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("planner");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drafts, setDrafts] = useState<DraftTask[]>([]);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [thankShow, setThankShow] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [aiInputsRemaining, setAiInputsRemaining] = useState(3);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [voiceAlarmOn, setVoiceAlarmOn] = useState(true);
+  const today = todayISO();
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const isFamily = mode === "family";
+  const isToday = selectedDate === today;
+
+  // Hydrate mode + voice toggle from localStorage (post-mount to avoid SSR mismatch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(MODE_KEY);
+      if (saved === "planner" || saved === "family") setMode(saved);
+      const v = localStorage.getItem(VOICE_KEY);
+      if (v === "off") setVoiceAlarmOn(false);
+    } catch {}
+  }, []);
+
+  function changeMode(m: Mode) {
+    setMode(m);
+    try { localStorage.setItem(MODE_KEY, m); } catch {}
+  }
+
+  function changeVoiceAlarm(v: boolean) {
+    setVoiceAlarmOn(v);
+    try { localStorage.setItem(VOICE_KEY, v ? "on" : "off"); } catch {}
+  }
+
+  // Alarms only fire for TODAY's real tasks, regardless of which date the user is browsing
+  const { activeAlarm, dismiss: dismissAlarm } = useTaskAlarm({
+    tasks: todayAlarmTasks,
+    voiceEnabled: voiceAlarmOn,
+  });
+
+
+  // Edge-swipe from left to open drawer
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    function onStart(e: TouchEvent) {
+      const t = e.touches[0];
+      if (t.clientX <= 24) touchStart.current = { x: t.clientX, y: t.clientY };
+      else touchStart.current = null;
+    }
+    function onEnd(e: TouchEvent) {
+      const s = touchStart.current;
+      if (!s) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - s.x;
+      const dy = Math.abs(t.clientY - s.y);
+      if (dx > 60 && dy < 50) setDrawerOpen(true);
+      touchStart.current = null;
+    }
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, []);
+
+
+
+  // —— 数据加载：根据 selectedDate 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDateView() {
+      // 23:00 Melting Log（只在加载今天时执行，避免来回切日期反复清理）
+      if (selectedDate === today) {
+        await supabase
+          .from("tasks")
+          .delete()
+          .in("type", ["temporary", "routine"])
+          .lt("execution_date", today);
+        const meltHour = new Date().getHours();
+        if (meltHour >= 23) {
+          await supabase
+            .from("tasks")
+            .delete()
+            .in("type", ["temporary", "routine"])
+            .eq("execution_date", today)
+            .eq("is_completed", false);
+        }
+      }
+
+      const dateObj = isoToDate(selectedDate);
+      const targetDow = isoDow(dateObj);
+
+      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务
+      // （含 milestone — 未来日程也要出现在对应日期的时间轴上）
+      const { data: dayTaskRows } = await supabase
+        .from("tasks")
+        .select("*")
+        .in("type", ["temporary", "routine", "milestone"])
+        .eq("execution_date", selectedDate);
+
+      // 动作 B：routines 表全量周期任务，前端按 recurrence_days 过滤
+      const { data: routineRows } = await supabase
+        .from("routines")
+        .select("id, time, title, note, recurrence_days")
+        .eq("active", true);
+
+      const matchingRoutines = (routineRows ?? []).filter((r) => {
+        const days = (r as { recurrence_days?: number[] | null }).recurrence_days;
+        if (!Array.isArray(days) || days.length === 0) return true;
+        return days.includes(targetDow);
+      });
+
+      // 如果是今天：保证常规任务已被持久化为今天的 tasks 行（便于勾选 ✓）
+      if (selectedDate === today && matchingRoutines.length > 0) {
+        const upsertRows = matchingRoutines.map((r) => ({
+          type: "routine" as const,
+          time: r.time,
+          title: r.title,
+          note: r.note,
+          execution_date: today,
+          routine_id: r.id,
+        }));
+        await supabase
+          .from("tasks")
+          .upsert(upsertRows, { onConflict: "routine_id,execution_date", ignoreDuplicates: true });
+
+        // 重新拉一次以拿到新 upsert 的 id
+        const { data: refreshed } = await supabase
+          .from("tasks")
+          .select("*")
+          .in("type", ["temporary", "routine", "milestone"])
+          .eq("execution_date", today);
+        if (cancelled) return;
+        const merged = (refreshed ?? []).map(rowToTask);
+        merged.sort((a, b) => a.time.localeCompare(b.time));
+        setTasks(merged);
+        setTodayAlarmTasks(merged);
+      } else {
+        // 未来/历史日期：tasks 行 + 未持久化的虚拟 routine 条目融合
+        const persistedRoutineIds = new Set(
+          (dayTaskRows ?? [])
+            .filter((r) => r.type === "routine" && r.routine_id)
+            .map((r) => r.routine_id as string),
+        );
+        const virtualRoutineTasks: Task[] = matchingRoutines
+          .filter((r) => !persistedRoutineIds.has(r.id))
+          .map((r) => ({
+            id: `vr-${r.id}-${selectedDate}`,
+            type: "routine" as const,
+            time: r.time,
+            title: r.title,
+            note: r.note ?? undefined,
+            execution_date: selectedDate,
+            done: false,
+          }));
+
+        const merged: Task[] = [
+          ...(dayTaskRows ?? []).map(rowToTask),
+          ...virtualRoutineTasks,
+        ];
+        merged.sort((a, b) => a.time.localeCompare(b.time));
+        if (cancelled) return;
+        setTasks(merged);
+
+        // 同步拉一次"今天的真实 tasks"喂给闹钟
+        const { data: todayRows } = await supabase
+          .from("tasks")
+          .select("*")
+          .in("type", ["temporary", "routine"])
+          .eq("execution_date", today);
+        if (cancelled) return;
+        setTodayAlarmTasks((todayRows ?? []).map(rowToTask));
+      }
+
+      // Upcoming milestones (today and future) — independent of selectedDate
+      const { data: msRows } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("type", "milestone")
+        .gte("execution_date", today)
+        .order("execution_date", { ascending: true });
+      if (cancelled) return;
+      setMilestones((msRows ?? []).map(rowToTask));
+    }
+
+    loadDateView();
+
+    // Realtime — only mutate state for rows that match the date the user is currently viewing
+    const channel = supabase
+      .channel("tasks-rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          const newRow = payload.new as DbTask | null;
+          const oldRow = payload.old as DbTask | null;
+
+          if (payload.eventType === "DELETE" && oldRow) {
+            setTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
+            setTodayAlarmTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
+            setMilestones((ms) => ms.filter((t) => t.id !== oldRow.id));
+            return;
+          }
+          if (!newRow) return;
+          const t = rowToTask(newRow);
+
+          if (newRow.type === "milestone") {
+            if (newRow.execution_date && newRow.execution_date >= today) {
+              setMilestones((ms) => {
+                const next = ms.filter((m) => m.id !== t.id);
+                return [...next, t].sort((a, b) =>
+                  (a.execution_date ?? "").localeCompare(b.execution_date ?? ""),
+                );
+              });
+            }
+          }
+          // 同时让 milestone / temporary / routine 都能进入"当前所选日"时间轴
+          {
+            const belongsToView =
+              newRow.execution_date === selectedDate ||
+              (!newRow.execution_date && selectedDate === today);
+            setTasks((ts) => {
+              const filtered = ts.filter((x) => x.id !== t.id);
+              if (!belongsToView) return filtered;
+              const next = [...filtered, t];
+              next.sort((a, b) => a.time.localeCompare(b.time));
+              return next;
+            });
+            // Update alarm pool if it's a real row for today
+            if (newRow.execution_date === today && newRow.type !== "milestone") {
+              setTodayAlarmTasks((ts) => {
+                const filtered = ts.filter((x) => x.id !== t.id);
+                return [...filtered, t];
+              });
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDate, today]);
+
+  const sorted = useMemo(
+    () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
+    [tasks],
+  );
+
+  const routineCount = useMemo(
+    () => tasks.filter((t) => t.type === "routine").length,
+    [tasks],
+  );
+
+
+
+  const completed = tasks.filter((t) => t.done).length;
+
+  // (compact header — removed verbose today label)
+
+
+  async function toggle(id: string) {
+    const target = tasks.find((t) => t.id === id);
+    if (!target) return;
+    const nextDone = !target.done;
+    // optimistic
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, done: nextDone } : t)));
+    if (isFamily && nextDone) {
+      setThankShow(false);
+      requestAnimationFrame(() => setThankShow(true));
+    }
+    // 虚拟（未来日期未持久化的）routine 行不写库
+    if (id.startsWith("vr-")) return;
+    await supabase.from("tasks").update({ is_completed: nextDone }).eq("id", id);
+  }
+
+  async function handleDelete(id: string) {
+    if (id.startsWith("vr-")) {
+      // 虚拟 routine：提取原始 routineId 并从 routines 表删除
+      const routineId = id.replace(/^vr-/, "").split("-")[0];
+      if (routineId) {
+        await supabase.from("routines").delete().eq("id", routineId);
+      }
+      return;
+    }
+    await supabase.from("tasks").delete().eq("id", id);
+  }
+
+
+  async function add(payload: {
+    time: string;
+    title: string;
+    date: Date;
+    recurrence: "none" | "daily" | "weekly";
+    link?: string;
+  }) {
+    const { time, title, date, recurrence, link } = payload;
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    const isFuture = iso > today;
+
+    if (recurrence === "daily") {
+      // Routine: insert into routines + inject into today's timeline if applicable
+      const { data: routine } = await supabase
+        .from("routines")
+        .insert({ time, title, active: true })
+        .select("id")
+        .single();
+      if (routine && !isFuture) {
+        await supabase.from("tasks").upsert(
+          [{
+            type: "routine" as const,
+            time,
+            title,
+            link: link ?? null,
+            execution_date: today,
+            routine_id: routine.id,
+          }],
+          { onConflict: "routine_id,execution_date", ignoreDuplicates: true },
+        );
+      }
+      return;
+    }
+
+    if (recurrence === "weekly" || isFuture) {
+      // Future single event → milestone (weekly w/o real repeat engine kept as milestone too)
+      await supabase.from("tasks").insert({
+        type: "milestone",
+        time,
+        title,
+        link: link ?? null,
+        execution_date: iso,
+      });
+      return;
+    }
+
+    await supabase.from("tasks").insert({
+      type: "temporary",
+      time,
+      title,
+      link: link ?? null,
+      execution_date: iso,
+    });
+  }
+
+
+  async function handleSync(instruction: string, pastedLink: string) {
+    if (!isPro && aiInputsRemaining <= 0) {
+      setPaywallOpen(true);
+      return;
+    }
+    setDrafts([]);
+    setVerifyOpen(false);
+    setAiLoading(true);
+    try {
+      let parsed: DraftTask[];
+      try {
+        parsed = await callDeepSeek(instruction, pastedLink);
+      } catch (err: unknown) {
+        // 严禁静默返回本地假日程 —— 必须把真实报错原因暴露给用户
+        console.error("DeepSeek API 报错原因:", err);
+        setDrafts([]);
+        setVerifyOpen(true);
+        const msg =
+          err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        alert(
+          `🤖 DeepSeek 真 AI 调用失败：\n\n${msg}\n\n请检查：\n1. DEEPSEEK_API_KEY 是否在 Lovable Cloud Secrets 中正确配置\n2. 网络/CORS 是否被拦截\n3. 控制台查看完整堆栈`,
+        );
+        return;
+      }
+      if (parsed.length === 0) {
+        setDrafts([]);
+        setVerifyOpen(true);
+        alert("DeepSeek 返回了空数组，没识别出有效日程，换种说法再试一次～");
+        return;
+      }
+      setDrafts(parsed);
+      setVerifyOpen(true);
+      if (!isPro) setAiInputsRemaining((n) => Math.max(0, n - 1));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+
+  async function publishDrafts(finalDrafts: DraftTask[]) {
+    const source = finalDrafts ?? drafts;
+    if (source.length > 0) {
+      const recurringDrafts = source.filter((d) => d.is_recurring);
+      const oneOffDrafts = source.filter((d) => !d.is_recurring);
+
+      // —— ① 单次任务：写入 tasks 表 ——
+      if (oneOffDrafts.length > 0) {
+        const rows = oneOffDrafts.map((d) => ({
+          type: d.type,
+          time: d.time,
+          title: d.title,
+          note: d.note,
+          link: d.link,
+          execution_date: d.execution_date ?? today,
+        }));
+        await supabase.from("tasks").insert(rows);
+      }
+
+      // —— ② 周期任务：写入 routines 表，并立刻把今天命中的注入到时间轴 ——
+      if (recurringDrafts.length > 0) {
+        const routineRows = recurringDrafts.map((d) => ({
+          time: d.time,
+          title: d.title,
+          note: d.note ?? null,
+          active: true,
+          recurrence_type: d.recurrence_type ?? "daily",
+          recurrence_days:
+            d.recurrence_days && d.recurrence_days.length > 0
+              ? d.recurrence_days
+              : [1, 2, 3, 4, 5, 6, 7],
+        }));
+        const { data: insertedRoutines } = await supabase
+          .from("routines")
+          .insert(routineRows)
+          .select("id, time, title, note, recurrence_days");
+
+        const jsDay = new Date().getDay();
+        const todayIsoDow = jsDay === 0 ? 7 : jsDay;
+        const todaysInjections =
+          (insertedRoutines ?? [])
+            .filter((r) => {
+              const days = (r as { recurrence_days?: number[] | null }).recurrence_days;
+              return !Array.isArray(days) || days.length === 0 || days.includes(todayIsoDow);
+            })
+            .map((r) => ({
+              type: "routine" as const,
+              time: r.time,
+              title: r.title,
+              note: r.note,
+              execution_date: today,
+              routine_id: r.id,
+            }));
+        if (todaysInjections.length > 0) {
+          await supabase
+            .from("tasks")
+            .upsert(todaysInjections, {
+              onConflict: "routine_id,execution_date",
+              ignoreDuplicates: true,
+            });
+        }
+      }
+    }
+    setVerifyOpen(false);
+    setDrafts([]);
+  }
+
+
+  return (
+    <main className="relative mx-auto min-h-screen w-full max-w-md md:max-w-2xl bg-background md:shadow-[0_0_60px_-20px_rgba(34,34,34,0.12)]">
+      <header className="px-6 pb-2 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="打开菜单"
+              className="-ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-foreground/80 transition-all hover:bg-foreground/5 active:scale-95"
+            >
+              <Menu className="h-[15px] w-[15px] stroke-[1.75]" />
+            </button>
+            <span className="rounded-full border border-foreground/15 px-2 py-0.5 text-[9.5px] font-medium tracking-[0.14em] text-foreground/65">
+              {isFamily ? "全家看板" : `管理员模式${isPro ? " · Pro" : ""}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              {new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric" })}
+            </span>
+            <span className="text-[10.5px] tracking-[0.06em] text-muted-foreground">
+              <span className="font-medium text-primary">{completed}</span>
+              <span className="text-foreground/40">/{tasks.length}</span>
+              <span className="ml-1">已完成</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-2">
+          <h1 className="text-[20px] font-semibold leading-none tracking-tight text-foreground">
+            InLoop
+          </h1>
+          <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            HIGH-IQ FAMILY PARENTING COLLABORATION AGENT
+          </p>
+        </div>
+      </header>
+
+      {!isFamily && (
+        <section className="space-y-2.5 px-6 pb-1">
+          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} />
+        </section>
+      )}
+
+      <section className="px-6 pb-40 pt-3">
+        <div className="flex items-center gap-3 pb-1">
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "group inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 transition-colors hover:bg-foreground/[0.04]",
+                  isFamily
+                    ? "text-[14px] font-medium tracking-[0.14em] text-foreground/80"
+                    : "text-[10.5px] font-medium tracking-[0.12em] text-foreground/80",
+                )}
+              >
+                <span>
+                  {isToday ? "今日时间轴" : `${selectedDate.slice(5).replace("-", "/")} · 日程`}
+                </span>
+                <CalendarIcon
+                  className={cn(
+                    "shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70",
+                    isFamily ? "h-3.5 w-3.5" : "h-3 w-3",
+                  )}
+                />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={6}
+              className="w-auto rounded-xl border-foreground/10 bg-card p-0 shadow-[0_8px_30px_-12px_rgba(34,34,34,0.18)]"
+            >
+              <Calendar
+                mode="single"
+                selected={isoToDate(selectedDate)}
+                onSelect={(d) => {
+                  if (!d) return;
+                  setSelectedDate(dateToISO(d));
+                  setCalendarOpen(false);
+                }}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="h-px flex-1 bg-foreground/10" />
+        </div>
+        <p className="pb-3 text-[10.5px] font-light leading-snug text-foreground/40">
+          {tasks.length === 0
+            ? "暂无任何安排"
+            : `共有 ${tasks.length} 项安排（含 ${routineCount} 项常驻常规）`}
+        </p>
+
+
+        <div>
+          {sorted.map((t) => (
+            <TaskItem key={t.id} task={t} onToggle={toggle} mode={mode} onDelete={handleDelete} />
+          ))}
+        </div>
+      </section>
+
+
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-md md:max-w-2xl justify-center pb-8">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Add task"
+          className={
+            isFamily
+              ? "pointer-events-auto inline-flex items-center justify-center rounded-full bg-foreground/80 p-2.5 text-background shadow-[0_6px_18px_-8px_rgba(34,34,34,0.4)] opacity-70 transition-all hover:opacity-100 active:scale-[0.98]"
+              : "pointer-events-auto inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-[13px] font-medium tracking-wide text-background shadow-[0_10px_30px_-10px_rgba(34,34,34,0.45)] transition-all hover:bg-foreground/90 active:scale-[0.98]"
+          }
+        >
+          <Plus className={isFamily ? "h-3.5 w-3.5 stroke-[2.25]" : "h-4 w-4 stroke-[2.25]"} />
+          {!isFamily && "新建任务"}
+        </button>
+      </div>
+
+      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} />
+      <VerificationModal
+        open={verifyOpen}
+        drafts={drafts}
+        onCancel={() => setVerifyOpen(false)}
+        onConfirm={publishDrafts}
+      />
+      <ThankYouToast show={thankShow} onDone={() => setThankShow(false)} />
+      <PaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />
+      <SideDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        mode={mode}
+        onModeChange={changeMode}
+        isPro={isPro}
+        onTogglePro={setIsPro}
+        onRequestPaywall={() => setPaywallOpen(true)}
+        voiceAlarmOn={voiceAlarmOn}
+        onVoiceAlarmChange={changeVoiceAlarm}
+      />
+      <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
+      {/* Edge-swipe hint strip (visual cue, also clickable) */}
+      <button
+        type="button"
+        aria-label="从左边缘滑动打开菜单"
+        onClick={() => setDrawerOpen(true)}
+        className="fixed left-0 top-1/2 z-10 h-16 w-1 -translate-y-1/2 rounded-r-full bg-foreground/10 transition-all hover:w-1.5 hover:bg-foreground/25"
+      />
+    </main>
+  );
+}
