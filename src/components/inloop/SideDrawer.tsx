@@ -276,11 +276,11 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                     )}
                     <span className="min-w-0">
                       <span className="block text-[13.5px] font-medium tracking-tight text-foreground">
-                        {voiceAlarmOn ? "🔊 大喇叭强提醒已开启" : "🔇 静默通知模式"}
+                        {voiceAlarmOn ? "🔊 到点语音强提醒已开启" : "🔇 静默通知模式"}
                       </span>
                       <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
                         {voiceAlarmOn
-                          ? "到点自动语音播报 + 全屏震动唤醒长辈"
+                          ? "到点自动语音播报 + 全屏唤醒查看端"
                           : "仅弹窗显示，不出声不打扰"}
                       </span>
                     </span>
