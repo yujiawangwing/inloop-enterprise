@@ -729,7 +729,7 @@ function Index() {
 
       {!isFamily && (
         <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} />
+          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} currentUserId={userId} />
         </section>
       )}
 
