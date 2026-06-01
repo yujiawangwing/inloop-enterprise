@@ -222,8 +222,9 @@ function Index() {
 
 
 
-  // —— 数据加载：根据 selectedDate 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
+  // —— 数据加载：根据 selectedDate + userId 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
   useEffect(() => {
+    if (!userId) return;
     let cancelled = false;
 
     async function loadDateView() {
@@ -232,6 +233,7 @@ function Index() {
         await supabase
           .from("tasks")
           .delete()
+          .eq("user_id", userId)
           .in("type", ["temporary", "routine"])
           .lt("execution_date", today);
         const meltHour = new Date().getHours();
@@ -239,6 +241,7 @@ function Index() {
           await supabase
             .from("tasks")
             .delete()
+            .eq("user_id", userId)
             .in("type", ["temporary", "routine"])
             .eq("execution_date", today)
             .eq("is_completed", false);
@@ -249,10 +252,10 @@ function Index() {
       const targetDow = isoDow(dateObj);
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务
-      // （含 milestone — 未来日程也要出现在对应日期的时间轴上）
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
+        .eq("user_id", userId)
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
@@ -260,6 +263,7 @@ function Index() {
       const { data: routineRows } = await supabase
         .from("routines")
         .select("id, time, title, note, recurrence_days")
+        .eq("user_id", userId)
         .eq("active", true);
 
       const matchingRoutines = (routineRows ?? []).filter((r) => {
@@ -277,6 +281,7 @@ function Index() {
           note: r.note,
           execution_date: today,
           routine_id: r.id,
+          user_id: userId,
         }));
         await supabase
           .from("tasks")
@@ -286,6 +291,7 @@ function Index() {
         const { data: refreshed } = await supabase
           .from("tasks")
           .select("*")
+          .eq("user_id", userId)
           .in("type", ["temporary", "routine", "milestone"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -294,7 +300,6 @@ function Index() {
         setTasks(merged);
         setTodayAlarmTasks(merged);
       } else {
-        // 未来/历史日期：tasks 行 + 未持久化的虚拟 routine 条目融合
         const persistedRoutineIds = new Set(
           (dayTaskRows ?? [])
             .filter((r) => r.type === "routine" && r.routine_id)
@@ -320,10 +325,10 @@ function Index() {
         if (cancelled) return;
         setTasks(merged);
 
-        // 同步拉一次"今天的真实 tasks"喂给闹钟
         const { data: todayRows } = await supabase
           .from("tasks")
           .select("*")
+          .eq("user_id", userId)
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -334,6 +339,7 @@ function Index() {
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
+        .eq("user_id", userId)
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
@@ -342,6 +348,8 @@ function Index() {
     }
 
     loadDateView();
+
+
 
     // Realtime — only mutate state for rows that match the date the user is currently viewing
     const channel = supabase
