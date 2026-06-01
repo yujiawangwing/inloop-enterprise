@@ -27,6 +27,13 @@ export function OwnerSelector({
 }: Props) {
   const [open, setOpen] = useState(false);
 
+  // 🔑 把 mock "me" 槽位映射到真实登录用户 ID，保证写入 owner_id 与主看板过滤一致
+  const meId = currentUserId ?? MOCK_USERS.me.id;
+  const userList = MOCK_USER_LIST.map((u) =>
+    u.id === MOCK_USERS.me.id ? { ...u, id: meId } : u,
+  );
+  const isMeId = (id: string) => id === meId || id === MOCK_USERS.me.id;
+
   function toggle(id: string) {
     if (value.includes(id)) {
       if (value.length === 1) return; // 至少留 1 个
@@ -37,7 +44,9 @@ export function OwnerSelector({
   }
 
   const selectedUsers = value
-    .map((id) => getMockUserById(id))
+    .map((id) =>
+      isMeId(id) ? { ...MOCK_USERS.me, id: meId } : getMockUserById(id),
+    )
     .filter((u): u is NonNullable<ReturnType<typeof getMockUserById>> => Boolean(u));
 
   const compact = size === "sm";
