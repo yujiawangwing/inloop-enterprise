@@ -55,7 +55,12 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [ownerIds, setOwnerIds] = useState<string[]>([MOCK_USERS.me.id]);
+  const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
+  useEffect(() => {
+    if (currentUserId) {
+      setOwnerIds((prev) => prev.map((id) => (id === MOCK_USERS.me.id ? currentUserId : id)));
+    }
+  }, [currentUserId]);
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
