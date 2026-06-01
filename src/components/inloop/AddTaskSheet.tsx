@@ -60,28 +60,18 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!time || !title.trim()) return;
-    const raw = link.trim();
-    let extracted: string | undefined;
-    if (raw) {
-      const match = raw.match(/https?:\/\/[^\s，,。、（）()【】\[\]"'<>]+/i);
-      if (!match) {
-        alert("请输入正确的链接网址");
-        return;
-      }
-      extracted = match[0];
-    }
     onAdd({
       time,
       title: title.trim(),
       date,
       recurrence,
-      link: extracted,
+      image_url: imageUrl ?? undefined,
     });
     setTime("");
     setTitle("");
     setDate(new Date());
     setRecurrence("none");
-    setLink("");
+    setImageUrl(null);
     onOpenChange(false);
   }
 
