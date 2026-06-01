@@ -648,7 +648,7 @@ function Index() {
               <Menu className="h-[15px] w-[15px] stroke-[1.75]" />
             </button>
             <span className="rounded-full border border-foreground/15 px-2 py-0.5 text-[9.5px] font-medium tracking-[0.14em] text-foreground/65">
-              {isFamily ? "领导今日行程看板" : `助理输入端${isPro ? " · Pro" : ""}`}
+              {isFamily ? "看板模式 · GLANCEABLE" : `控制台${isPro ? " · Pro" : ""}`}
             </span>
 
           </div>
