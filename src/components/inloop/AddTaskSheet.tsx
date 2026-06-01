@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { ImageUploader } from "./ImageUploader";
 
 export type Recurrence = "none" | "daily" | "weekly";
 
@@ -26,7 +27,7 @@ export interface NewTaskPayload {
   title: string;
   date: Date;
   recurrence: Recurrence;
-  link?: string;
+  image_url?: string;
 }
 
 interface Props {
@@ -49,7 +50,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
-  const [link, setLink] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [repeatOpen, setRepeatOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
 
@@ -59,28 +60,18 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!time || !title.trim()) return;
-    const raw = link.trim();
-    let extracted: string | undefined;
-    if (raw) {
-      const match = raw.match(/https?:\/\/[^\s，,。、（）()【】\[\]"'<>]+/i);
-      if (!match) {
-        alert("请输入正确的链接网址");
-        return;
-      }
-      extracted = match[0];
-    }
     onAdd({
       time,
       title: title.trim(),
       date,
       recurrence,
-      link: extracted,
+      image_url: imageUrl ?? undefined,
     });
     setTime("");
     setTitle("");
     setDate(new Date());
     setRecurrence("none");
-    setLink("");
+    setImageUrl(null);
     onOpenChange(false);
   }
 
@@ -238,20 +229,10 @@ export function AddTaskSheet({ open, onOpenChange, onAdd }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label
-              htmlFor="link"
-              className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              🔗 链接/网址（可选）
+            <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              📸 行程截图 / 邀请函（可选）
             </Label>
-            <Input
-              id="link"
-              type="text"
-              placeholder="粘贴小红书、公众号、菜谱视频等原文/链接..."
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="h-12 rounded-xl border-foreground/25 bg-background text-base"
-            />
+            <ImageUploader value={imageUrl} onChange={setImageUrl} />
           </div>
 
 

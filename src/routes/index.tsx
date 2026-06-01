@@ -464,9 +464,9 @@ function Index() {
     title: string;
     date: Date;
     recurrence: "none" | "daily" | "weekly";
-    link?: string;
+    image_url?: string;
   }) {
-    const { time, title, date, recurrence, link } = payload;
+    const { time, title, date, recurrence, image_url } = payload;
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const isFuture = iso > today;
@@ -483,7 +483,7 @@ function Index() {
             type: "routine" as const,
             time,
             title,
-            link: link ?? null,
+            image_url: image_url ?? null,
             execution_date: today,
             routine_id: routine.id,
             user_id: userId,
@@ -499,7 +499,7 @@ function Index() {
         type: "milestone",
         time,
         title,
-        link: link ?? null,
+        image_url: image_url ?? null,
         execution_date: iso,
         user_id: userId,
       });
@@ -510,7 +510,7 @@ function Index() {
       type: "temporary",
       time,
       title,
-      link: link ?? null,
+      image_url: image_url ?? null,
       execution_date: iso,
       user_id: userId,
     });

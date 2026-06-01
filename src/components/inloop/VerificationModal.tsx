@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Link2, ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
+import { ShieldCheck, Sparkles, Pencil, Repeat } from "lucide-react";
 import type { DraftTask } from "@/lib/parseDraft";
+import { ImageUploader } from "./ImageUploader";
+import { ImageLightbox } from "./ImageLightbox";
 
 interface Props {
   open: boolean;
@@ -13,6 +15,7 @@ interface Props {
 export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editable, setEditable] = useState<DraftTask[]>(drafts);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     setEditable(drafts);
@@ -110,13 +113,14 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
                   placeholder="任务名"
                   className="mt-2 block w-full rounded-md border border-foreground/12 bg-background px-2.5 py-1.5 text-[14px] font-medium leading-snug text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none"
                 />
-                <input
-                  type="text"
-                  value={d.link ?? ""}
-                  onChange={(e) => updateField(i, "link", e.target.value || undefined)}
-                  placeholder="🔗 链接（可选）"
-                  className="mt-1.5 block w-full rounded-md border border-foreground/10 bg-background px-2.5 py-1.5 text-[11.5px] text-foreground/70 placeholder:text-foreground/30 focus:border-primary/40 focus:outline-none"
-                />
+                <div className="mt-1.5">
+                  <ImageUploader
+                    value={d.image_url ?? null}
+                    onChange={(url) => updateField(i, "image_url", url ?? undefined)}
+                    size="sm"
+                    label="上传行程截图"
+                  />
+                </div>
                 <textarea
                   value={d.note ?? ""}
                   onChange={(e) => updateField(i, "note", e.target.value || undefined)}
@@ -152,18 +156,22 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
                   {d.title}
                 </p>
 
-                {d.link && (
-                  <a
-                    href={d.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 flex max-w-full items-start gap-1.5 rounded-md bg-primary/8 px-2 py-1.5 text-[11.5px] font-medium text-primary hover:bg-primary/15"
+                {d.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(d.image_url ?? null)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-foreground/10 bg-background p-1.5 transition-all hover:border-primary/40 hover:bg-primary/5"
+                    aria-label="查看大图"
                   >
-                    <Link2 className="mt-0.5 h-3 w-3 shrink-0" />
-                    <span className="min-w-0 flex-1 break-all">
-                      🔗 {d.link.replace(/^https?:\/\//, "")}
+                    <img
+                      src={d.image_url}
+                      alt="行程截图"
+                      className="h-12 w-12 rounded-md object-cover"
+                    />
+                    <span className="pr-2 text-[10.5px] font-medium text-foreground/60">
+                      📸 行程截图（点击查看大图）
                     </span>
-                  </a>
+                  </button>
                 )}
 
                 {d.note && (
@@ -206,6 +214,7 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm }: Props) 
           </button>
         </div>
       </DialogContent>
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </Dialog>
   );
 }
