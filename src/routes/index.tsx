@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Menu, Calendar as CalendarIcon } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
@@ -11,6 +11,7 @@ import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
+import { getMockUserId } from "@/lib/mockAuth";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { parseDraftWithDeepSeek, type DeepSeekDraft } from "@/lib/deepseek.functions";
 import { WakeAlarmOverlay } from "@/components/inloop/WakeAlarmOverlay";
 import { useTaskAlarm } from "@/hooks/useTaskAlarm";
+
 
 const VOICE_KEY = "inloop:voiceAlarm";
 
