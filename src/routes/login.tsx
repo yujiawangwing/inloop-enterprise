@@ -83,7 +83,7 @@ function LoginPage() {
             HIGH-IQ EXECUTIVE AGENDA COLLABORATION AGENT
           </p>
           <p className="mt-4 text-[12.5px] leading-relaxed text-foreground/55">
-            领导日程协同·秘书专属智能助手
+            高智感日程协同 · 企业级智能控制台
           </p>
         </div>
 
