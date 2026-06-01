@@ -102,6 +102,8 @@ interface DbTask {
   execution_date: string | null;
   is_completed: boolean;
   routine_id: string | null;
+  feedback_tag?: string | null;
+  comment?: string | null;
 }
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
@@ -121,6 +123,8 @@ function rowToTask(r: DbTask): Task {
     image_url: r.image_url ?? undefined,
     execution_date: r.execution_date ?? undefined,
     done: r.is_completed,
+    feedback_tag: r.feedback_tag ?? null,
+    comment: r.comment ?? null,
   };
 }
 
