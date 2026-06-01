@@ -202,49 +202,56 @@ export function AIComposer({ onSync, remaining, loading = false }: Props) {
       </div>
 
       {/* 图片附件上传 */}
-      <div className="mt-1">
-        {attachmentUrl ? (
-          <div className="flex items-center gap-2 rounded-lg border border-foreground/10 bg-neutral-50 px-2 py-1.5">
+      <div className="mt-1.5 flex items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          className="hidden"
+        />
+
+        {previewUrl ? (
+          <div className="relative shrink-0">
             <img
-              src={attachmentUrl}
-              alt="行程截图预览"
-              className="h-7 w-7 shrink-0 rounded object-cover"
+              src={previewUrl}
+              alt="行程截图本地预览"
+              className="h-16 w-16 rounded-lg border border-foreground/12 object-cover shadow-sm"
             />
-            <span className="min-w-0 flex-1 truncate text-[10.5px] text-foreground/60">
-              已上传行程截图
-            </span>
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => setAttachmentUrl("")}
+              onClick={clearAttachment}
               aria-label="移除附件"
-              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-foreground/40 hover:bg-foreground/5 hover:text-foreground/70"
+              className="absolute -right-1.5 -top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow ring-2 ring-background transition-all hover:scale-105 active:scale-95"
             >
-              <X className="h-3 w-3" />
+              <X className="h-2.5 w-2.5 stroke-[2.5]" />
             </button>
           </div>
         ) : (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFile}
-              className="hidden"
-            />
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 bg-neutral-50/60 px-2.5 py-1.5 text-[10.5px] font-medium text-foreground/55 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
-            >
-              {uploading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ImagePlus className="h-3 w-3" />
-              )}
-              {uploading ? "上传中..." : "上传行程截图 / 邀请函图片"}
-            </button>
-          </>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-foreground/20 bg-neutral-50/60 px-2.5 py-1.5 text-[10.5px] font-medium text-foreground/55 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
+          >
+            <ImagePlus className="h-3 w-3" />
+            上传行程截图 / 邀请函图片
+          </button>
+        )}
+
+        {previewUrl && (
+          <span className="min-w-0 flex-1 text-[10.5px] leading-snug text-foreground/55">
+            {uploading
+              ? "正在压缩并上传截图..."
+              : attachmentUrl
+                ? "截图已就绪，可一并发送给 AI 解析"
+                : "本地预览中"}
+          </span>
         )}
       </div>
 
