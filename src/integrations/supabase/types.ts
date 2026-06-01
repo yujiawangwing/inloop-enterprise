@@ -18,8 +18,11 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          creator_id: string | null
+          flow_status: string
           id: string
           note: string | null
+          owner_id: string | null
           recurrence_days: number[]
           recurrence_type: string
           time: string
@@ -29,8 +32,11 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          creator_id?: string | null
+          flow_status?: string
           id?: string
           note?: string | null
+          owner_id?: string | null
           recurrence_days?: number[]
           recurrence_type?: string
           time: string
@@ -40,8 +46,11 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          creator_id?: string | null
+          flow_status?: string
           id?: string
           note?: string | null
+          owner_id?: string | null
           recurrence_days?: number[]
           recurrence_type?: string
           time?: string
@@ -54,13 +63,16 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string
+          creator_id: string | null
           execution_date: string | null
           feedback_tag: string | null
+          flow_status: string
           id: string
           image_url: string | null
           is_completed: boolean
           link: string | null
           note: string | null
+          owner_id: string | null
           routine_id: string | null
           time: string
           title: string
@@ -70,13 +82,16 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string
+          creator_id?: string | null
           execution_date?: string | null
           feedback_tag?: string | null
+          flow_status?: string
           id?: string
           image_url?: string | null
           is_completed?: boolean
           link?: string | null
           note?: string | null
+          owner_id?: string | null
           routine_id?: string | null
           time: string
           title: string
@@ -86,13 +101,16 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string
+          creator_id?: string | null
           execution_date?: string | null
           feedback_tag?: string | null
+          flow_status?: string
           id?: string
           image_url?: string | null
           is_completed?: boolean
           link?: string | null
           note?: string | null
+          owner_id?: string | null
           routine_id?: string | null
           time?: string
           title?: string
