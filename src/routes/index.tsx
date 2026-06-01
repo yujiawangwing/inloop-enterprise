@@ -9,6 +9,7 @@ import { AIComposer } from "@/components/inloop/AIComposer";
 import { VerificationModal } from "@/components/inloop/VerificationModal";
 import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
+import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { getMockUserId } from "@/lib/mockAuth";
@@ -105,6 +106,9 @@ interface DbTask {
   routine_id: string | null;
   feedback_tag?: string | null;
   comment?: string | null;
+  creator_id?: string | null;
+  owner_id?: string | null;
+  flow_status?: string | null;
 }
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
@@ -126,6 +130,9 @@ function rowToTask(r: DbTask): Task {
     done: r.is_completed,
     feedback_tag: r.feedback_tag ?? null,
     comment: r.comment ?? null,
+    creator_id: r.creator_id ?? null,
+    owner_id: r.owner_id ?? null,
+    flow_status: r.flow_status ?? null,
   };
 }
 
@@ -147,6 +154,7 @@ function Index() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("planner");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -260,11 +268,12 @@ function Index() {
       const dateObj = isoToDate(selectedDate);
       const targetDow = isoDow(dateObj);
 
-      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务
+      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
         .eq("owner_id", uid)
+        .eq("flow_status", "accepted")
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
@@ -304,6 +313,7 @@ function Index() {
           .from("tasks")
           .select("*")
           .eq("owner_id", uid)
+          .eq("flow_status", "accepted")
           .in("type", ["temporary", "routine", "milestone"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -341,6 +351,7 @@ function Index() {
           .from("tasks")
           .select("*")
           .eq("owner_id", uid)
+          .eq("flow_status", "accepted")
           .in("type", ["temporary", "routine"])
           .eq("execution_date", today);
         if (cancelled) return;
@@ -352,11 +363,23 @@ function Index() {
         .from("tasks")
         .select("*")
         .eq("owner_id", uid)
+        .eq("flow_status", "accepted")
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
       if (cancelled) return;
       setMilestones((msRows ?? []).map(rowToTask));
+
+      // —— 新要务待确认气泡：所有 owner=我 且 flow_status=pending 的协同任务 ——
+      const { data: pendingRows } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("owner_id", uid)
+        .eq("flow_status", "pending")
+        .order("execution_date", { ascending: true })
+        .order("time", { ascending: true });
+      if (cancelled) return;
+      setPendingTasks((pendingRows ?? []).map(rowToTask));
     }
 
     loadDateView();
@@ -377,26 +400,45 @@ function Index() {
             setTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
             setTodayAlarmTasks((ts) => ts.filter((t) => t.id !== oldRow.id));
             setMilestones((ms) => ms.filter((t) => t.id !== oldRow.id));
+            setPendingTasks((ps) => ps.filter((t) => t.id !== oldRow.id));
             return;
           }
           if (!newRow) return;
+          // 只关心 owner=当前用户 的行
+          if (newRow.owner_id !== uid) return;
           const t = rowToTask(newRow);
+          const isAccepted = newRow.flow_status === "accepted";
+          const isPending = newRow.flow_status === "pending";
+
+          // —— Pending Inbox 同步 ——
+          setPendingTasks((ps) => {
+            const without = ps.filter((x) => x.id !== t.id);
+            if (isPending) {
+              return [...without, t].sort(
+                (a, b) =>
+                  (a.execution_date ?? "").localeCompare(b.execution_date ?? "") ||
+                  a.time.localeCompare(b.time),
+              );
+            }
+            return without;
+          });
 
           if (newRow.type === "milestone") {
-            if (newRow.execution_date && newRow.execution_date >= today) {
-              setMilestones((ms) => {
-                const next = ms.filter((m) => m.id !== t.id);
+            setMilestones((ms) => {
+              const next = ms.filter((m) => m.id !== t.id);
+              if (isAccepted && newRow.execution_date && newRow.execution_date >= today) {
                 return [...next, t].sort((a, b) =>
                   (a.execution_date ?? "").localeCompare(b.execution_date ?? ""),
                 );
-              });
-            }
+              }
+              return next;
+            });
           }
-          // 同时让 milestone / temporary / routine 都能进入"当前所选日"时间轴
           {
             const belongsToView =
-              newRow.execution_date === selectedDate ||
-              (!newRow.execution_date && selectedDate === today);
+              isAccepted &&
+              (newRow.execution_date === selectedDate ||
+                (!newRow.execution_date && selectedDate === today));
             setTasks((ts) => {
               const filtered = ts.filter((x) => x.id !== t.id);
               if (!belongsToView) return filtered;
@@ -404,12 +446,13 @@ function Index() {
               next.sort((a, b) => a.time.localeCompare(b.time));
               return next;
             });
-            // Update alarm pool if it's a real row for today
-            if (newRow.execution_date === today && newRow.type !== "milestone") {
+            if (isAccepted && newRow.execution_date === today && newRow.type !== "milestone") {
               setTodayAlarmTasks((ts) => {
                 const filtered = ts.filter((x) => x.id !== t.id);
                 return [...filtered, t];
               });
+            } else if (!isAccepted) {
+              setTodayAlarmTasks((ts) => ts.filter((x) => x.id !== t.id));
             }
           }
         },
@@ -732,6 +775,21 @@ function Index() {
           <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} currentUserId={userId} />
         </section>
       )}
+
+      <PendingInbox
+        tasks={pendingTasks.map<PendingTask>((t) => ({
+          id: t.id,
+          time: t.time,
+          title: t.title,
+          note: t.note ?? null,
+          image_url: t.image_url ?? null,
+          execution_date: t.execution_date ?? null,
+          creator_id: t.creator_id ?? null,
+          owner_id: t.owner_id ?? null,
+        }))}
+      />
+
+
 
       <section className="px-6 pb-40 pt-3">
         <div className="flex items-center gap-3 pb-1">

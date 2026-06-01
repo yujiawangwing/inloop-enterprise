@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useEffect, useState } from "react";
 import { ImageLightbox } from "./ImageLightbox";
 import { supabase } from "@/integrations/supabase/client";
+import { getMockUserById } from "@/lib/mockUsers";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -20,6 +21,9 @@ export interface Task {
   execution_date?: string;
   feedback_tag?: string | null;
   comment?: string | null;
+  creator_id?: string | null;
+  owner_id?: string | null;
+  flow_status?: string | null;
 }
 
 interface Props {
@@ -170,6 +174,19 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                 />
               </button>
             )}
+
+            {task.creator_id && task.owner_id && task.creator_id !== task.owner_id && (
+              <p
+                className={cn(
+                  "mt-1.5 text-foreground/40",
+                  isFamily ? "text-[12px]" : "text-[10px]",
+                )}
+              >
+                来自 {getMockUserById(task.creator_id)?.label ?? "同事"} 的协同指派
+              </p>
+            )}
+
+
 
             {/* Console-mode status label */}
             {!isFamily && (
