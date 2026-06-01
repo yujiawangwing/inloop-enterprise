@@ -24,18 +24,28 @@ type SpeechRecognitionLike = {
 export function AIComposer({ onSync, remaining, loading = false }: Props) {
   const [instruction, setInstruction] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const baseTextRef = useRef("");
-  const canSend = instruction.trim().length > 0 || attachmentUrl.trim().length > 0;
+  const canSend = (instruction.trim().length > 0 || attachmentUrl.trim().length > 0) && !uploading;
 
   useEffect(() => {
     return () => {
       try { recognitionRef.current?.stop(); } catch { /* noop */ }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function clearAttachment() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setAttachmentUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   function submit() {
     if (!canSend || loading) return;
