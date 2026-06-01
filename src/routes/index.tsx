@@ -225,9 +225,11 @@ function Index() {
   // —— 数据加载：根据 selectedDate + userId 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
   useEffect(() => {
     if (!userId) return;
+    const uid: string = userId;
     let cancelled = false;
 
     async function loadDateView() {
+
       // 23:00 Melting Log（只在加载今天时执行，避免来回切日期反复清理）
       if (selectedDate === today) {
         await supabase
