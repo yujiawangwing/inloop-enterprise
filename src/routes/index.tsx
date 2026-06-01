@@ -362,11 +362,23 @@ function Index() {
         .from("tasks")
         .select("*")
         .eq("owner_id", uid)
+        .eq("flow_status", "accepted")
         .eq("type", "milestone")
         .gte("execution_date", today)
         .order("execution_date", { ascending: true });
       if (cancelled) return;
       setMilestones((msRows ?? []).map(rowToTask));
+
+      // —— 新要务待确认气泡：所有 owner=我 且 flow_status=pending 的协同任务 ——
+      const { data: pendingRows } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("owner_id", uid)
+        .eq("flow_status", "pending")
+        .order("execution_date", { ascending: true })
+        .order("time", { ascending: true });
+      if (cancelled) return;
+      setPendingTasks((pendingRows ?? []).map(rowToTask));
     }
 
     loadDateView();
