@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useEffect, useState } from "react";
 import { ImageLightbox } from "./ImageLightbox";
 import { supabase } from "@/integrations/supabase/client";
+import { getMockUserById } from "@/lib/mockUsers";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -20,6 +21,9 @@ export interface Task {
   execution_date?: string;
   feedback_tag?: string | null;
   comment?: string | null;
+  creator_id?: string | null;
+  owner_id?: string | null;
+  flow_status?: string | null;
 }
 
 interface Props {
