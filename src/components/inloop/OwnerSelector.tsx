@@ -67,7 +67,7 @@ export function OwnerSelector({
           <span className="font-medium uppercase tracking-[0.14em] text-foreground/50">To:</span>
           <span className="flex min-w-0 flex-wrap items-center gap-1">
             {selectedUsers.map((u) => {
-              const isMe = u.id === currentUserId;
+              const isMe = isMeId(u.id);
               return (
                 <span
                   key={u.id}
