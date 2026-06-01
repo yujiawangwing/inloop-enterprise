@@ -98,6 +98,7 @@ interface DbTask {
   title: string;
   note: string | null;
   link: string | null;
+  image_url: string | null;
   execution_date: string | null;
   is_completed: boolean;
   routine_id: string | null;
@@ -117,6 +118,7 @@ function rowToTask(r: DbTask): Task {
     title: r.title,
     note: r.note ?? undefined,
     link: r.link ?? undefined,
+    image_url: r.image_url ?? undefined,
     execution_date: r.execution_date ?? undefined,
     done: r.is_completed,
   };
