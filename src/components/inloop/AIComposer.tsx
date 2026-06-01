@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/compressImage";
 
 interface Props {
   onSync: (instruction: string, attachmentUrl: string) => void;
