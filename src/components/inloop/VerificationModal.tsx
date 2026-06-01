@@ -167,6 +167,34 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
                   {d.title}
                 </p>
 
+                {/* 协同目标药丸 */}
+                {d.owner_ids && d.owner_ids.length > 0 && (
+                  <div className="mt-2 inline-flex flex-wrap items-center gap-1.5">
+                    <Users className="h-3 w-3 text-foreground/40" />
+                    <span className="text-[9.5px] font-medium uppercase tracking-[0.16em] text-foreground/45">
+                      指派
+                    </span>
+                    {d.owner_ids.map((oid) => {
+                      const u = getMockUserById(oid);
+                      if (!u) return null;
+                      const isMe = oid === currentUserId;
+                      return (
+                        <span
+                          key={oid}
+                          className={`inline-flex items-center rounded-full px-1.5 py-[1px] text-[10px] font-medium leading-none ${u.avatarColor} ${isMe ? "ring-1 ring-primary/30" : ""}`}
+                        >
+                          {isMe ? "我本人" : u.label}
+                          {!isMe && (
+                            <span className="ml-1 text-[8.5px] font-semibold tracking-wider opacity-70">
+                              · 待确认
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {d.image_url && (
                   <button
                     type="button"
