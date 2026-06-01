@@ -117,6 +117,14 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
                   className="mt-2 block w-full rounded-md border border-foreground/12 bg-background px-2.5 py-1.5 text-[14px] font-medium leading-snug text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none"
                 />
                 <div className="mt-1.5">
+                  <OwnerSelector
+                    value={d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [MOCK_USERS.me.id]}
+                    onChange={(ids) => updateField(i, "owner_ids", ids)}
+                    currentUserId={currentUserId}
+                    size="sm"
+                  />
+                </div>
+                <div className="mt-1.5">
                   <ImageUploader
                     value={d.image_url ?? null}
                     onChange={(url) => updateField(i, "image_url", url ?? undefined)}
