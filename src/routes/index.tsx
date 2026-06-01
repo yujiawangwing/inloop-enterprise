@@ -291,6 +291,9 @@ function Index() {
           execution_date: today,
           routine_id: r.id,
           user_id: uid,
+          owner_id: uid,
+          creator_id: uid,
+          flow_status: "accepted" as const,
         }));
         await supabase
           .from("tasks")
