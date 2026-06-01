@@ -30,9 +30,14 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
   const isFamily = mode === "family";
   const isPlanner = mode === "planner";
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
     <div className="relative flex items-stretch gap-4">
+      <ImageLightbox
+        src={lightboxOpen ? task.image_url ?? null : null}
+        onClose={() => setLightboxOpen(false)}
+      />
       {/* timeline rail */}
       <div
         className={cn(
