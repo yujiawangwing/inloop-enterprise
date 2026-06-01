@@ -267,11 +267,12 @@ function Index() {
       const dateObj = isoToDate(selectedDate);
       const targetDow = isoDow(dateObj);
 
-      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务
+      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
         .eq("owner_id", uid)
+        .eq("flow_status", "accepted")
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
 
