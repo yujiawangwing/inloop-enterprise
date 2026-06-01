@@ -12,6 +12,7 @@ import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { getMockUserId } from "@/lib/mockAuth";
+import { MOCK_USERS } from "@/lib/mockUsers";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
