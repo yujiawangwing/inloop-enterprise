@@ -152,6 +152,7 @@ function Index() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTaskRows, setRawTaskRows] = useState<DbTask[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
@@ -169,6 +170,7 @@ function Index() {
   const today = todayISO();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
 
@@ -267,6 +269,15 @@ function Index() {
 
       const dateObj = isoToDate(selectedDate);
       const targetDow = isoDow(dateObj);
+
+      // Debug: 完全不按日期 / owner / flow_status 过滤，直接读取 tasks 原始数组
+      const { data: allTaskRows, error: allTaskError } = await supabase
+        .from("tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+      console.log("[Dashboard][Debug] Current Mock User ID =", uid);
+      console.log("[Dashboard][Debug] Raw Tasks Array（未过滤）=", allTaskRows, "error =", allTaskError);
+      if (!cancelled) setRawTaskRows((allTaskRows ?? []) as DbTask[]);
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
       console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
@@ -465,7 +476,7 @@ function Index() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selectedDate, today, userId]);
+  }, [selectedDate, today, userId, reloadTick]);
 
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
