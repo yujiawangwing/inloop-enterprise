@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Users, Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { MOCK_USERS, MOCK_USER_LIST, getMockUserById } from "@/lib/mockUsers";
+import { MOCK_USERS, MOCK_USER_LIST, getMockUserById, isFixedMockId } from "@/lib/mockUsers";
 
 interface Props {
   value: string[];                       // 当前勾选的 owner_id 列表
@@ -14,9 +14,6 @@ interface Props {
 
 /**
  * 协同目标选择器 (To:)
- * - 默认勾选「我本人」(由父组件控制 value)
- * - 至少保留 1 个勾选项
- * - 多选下拉，结果以药丸展示
  */
 export function OwnerSelector({
   value,
@@ -27,12 +24,16 @@ export function OwnerSelector({
 }: Props) {
   const [open, setOpen] = useState(false);
 
-  // 🔑 把 mock "me" 槽位映射到真实登录用户 ID，保证写入 owner_id 与主看板过滤一致
-  const meId = currentUserId ?? MOCK_USERS.me.id;
-  const userList = MOCK_USER_LIST.map((u) =>
-    u.id === MOCK_USERS.me.id ? { ...u, id: meId } : u,
-  );
-  const isMeId = (id: string) => id === meId || id === MOCK_USERS.me.id;
+  // 当登录身份命中固定 mock 用户（开发者测试通道）→ 直接以 3 个固定 ID 渲染列表，避免 id 重复
+  // 否则（手机号/微信随机 UUID 登录）→ 把"我本人"槽位映射到真实 uid
+  const fixed = isFixedMockId(currentUserId);
+  const meId = fixed ? (currentUserId as string) : (currentUserId ?? MOCK_USERS.me.id);
+  const userList = fixed
+    ? MOCK_USER_LIST
+    : MOCK_USER_LIST.map((u) =>
+        u.id === MOCK_USERS.me.id ? { ...u, id: meId } : u,
+      );
+  const isMeId = (id: string) => id === meId || (!fixed && id === MOCK_USERS.me.id);
 
   function toggle(id: string) {
     if (value.includes(id)) {
@@ -44,9 +45,13 @@ export function OwnerSelector({
   }
 
   const selectedUsers = value
-    .map((id) =>
-      isMeId(id) ? { ...MOCK_USERS.me, id: meId } : getMockUserById(id),
-    )
+    .map((id) => {
+      if (isMeId(id)) {
+        const meUser = fixed ? getMockUserById(meId) : MOCK_USERS.me;
+        return meUser ? { ...meUser, id: meId } : null;
+      }
+      return getMockUserById(id);
+    })
     .filter((u): u is NonNullable<ReturnType<typeof getMockUserById>> => Boolean(u));
 
   const compact = size === "sm";
