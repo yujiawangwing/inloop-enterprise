@@ -173,6 +173,42 @@ function LoginPage() {
           <p className="mt-6 text-center text-[10px] leading-relaxed text-foreground/40">
             登录即代表同意《InLoop 企业服务协议》与《隐私政策》
           </p>
+
+          {/* 🔧 开发者测试通道 · 一键以固定身份进入，便于多端协同测试 */}
+          <div className="mt-5 rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.02] p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-foreground/50">
+              <span>🔧</span>
+              <span>开发者测试通道</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {MOCK_USER_LIST.map((u) => (
+                <button
+                  key={u.key}
+                  type="button"
+                  onClick={() => {
+                    loginAsMockUser(u.key);
+                    navigate({ to: "/", replace: true });
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border border-foreground/12 bg-card px-3 py-1.5 text-[11.5px] font-medium text-foreground/80 transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary active:scale-[0.97]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
+                      u.avatarColor,
+                    )}
+                  >
+                    {u.label.slice(-1)}
+                  </span>
+                  {u.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[9.5px] leading-snug text-foreground/40">
+              点击任意身份即模拟登录，可在主页右上角随时切换账户。
+            </p>
+          </div>
         </div>
 
         <p className="mt-6 text-[10px] tracking-wide text-foreground/35">
