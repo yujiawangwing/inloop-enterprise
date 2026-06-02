@@ -83,7 +83,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
     setDate(new Date());
     setRecurrence("none");
     setImageUrl(null);
-    setOwnerIds([MOCK_USERS.me.id]);
+    setOwnerIds([currentUserId ?? MOCK_USERS.me.id]);
     onOpenChange(false);
   }
 

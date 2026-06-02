@@ -12,8 +12,9 @@ import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
-import { getMockUserId } from "@/lib/mockAuth";
-import { MOCK_USERS } from "@/lib/mockUsers";
+import { getMockUserId, logoutMock } from "@/lib/mockAuth";
+import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
+import { LogOut } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -791,8 +792,42 @@ function Index() {
           <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             INLOOP — HIGH-IQ EXECUTIVE AGENDA COLLABORATION AGENT
           </p>
-
         </div>
+
+        {/* 当前操作员挂牌 · 一键切换账户 */}
+        {(() => {
+          const me = getMockUserById(userId);
+          const displayLabel = me?.label ?? "当前用户";
+          return (
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-full border border-foreground/10 bg-card/70 px-2.5 py-1 shadow-[0_1px_2px_rgba(34,34,34,0.03)]">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
+                    me?.avatarColor ?? "bg-foreground/10 text-foreground/70",
+                  )}
+                >
+                  {displayLabel.slice(-1)}
+                </span>
+                <span className="truncate text-[10.5px] tracking-wide text-foreground/65">
+                  当前操作员：<span className="font-medium text-foreground">{displayLabel}</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  logoutMock();
+                  navigate({ to: "/login", replace: true });
+                }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+                aria-label="切换账户"
+              >
+                <LogOut className="h-3 w-3" />
+                切换账户
+              </button>
+            </div>
+          );
+        })()}
       </header>
 
       {!isFamily && (
@@ -913,22 +948,6 @@ function Index() {
         onVoiceAlarmChange={changeVoiceAlarm}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
-      <section className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-72 w-full max-w-md overflow-auto border-t-4 border-primary bg-primary/10 px-4 py-3 text-foreground shadow-[0_-12px_40px_-18px_rgba(0,0,0,0.35)] md:max-w-2xl">
-        <div className="flex flex-col gap-1 text-[13px] font-black leading-tight sm:flex-row sm:items-center sm:justify-between">
-          <span>🧪 Developer Debug Panel</span>
-          <span>Current Mock User ID: {userId ?? "NULL"}</span>
-          <span>User_Me: {userId === MOCK_USERS.me.id ? "YES" : "NO"}</span>
-          <span>Total Tasks Fetched: {rawTaskRows.length}</span>
-        </div>
-        {rawTaskError && (
-          <p className="mt-2 rounded-md bg-red-100 px-2 py-1 text-[12px] font-bold text-red-700">
-            Raw fetch error: {rawTaskError}
-          </p>
-        )}
-        <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-background/80 p-2 text-[10px] leading-snug text-foreground">
-          {JSON.stringify(rawTaskRows, null, 2)}
-        </pre>
-      </section>
       {/* Edge-swipe hint strip (visual cue, also clickable) */}
       <button
         type="button"

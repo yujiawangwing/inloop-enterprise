@@ -1,5 +1,6 @@
 // 高保真模拟登录：登录后生成 mock user_id，全站按 user_id 隔离数据
-// 后续接入真实 Supabase Auth 时，把 getMockUserId() 替换为 supabase.auth.getUser() 即可
+import { MOCK_USERS, type MockUserKey } from "./mockUsers";
+
 const USER_KEY = "inloop:mockUserId";
 const USER_LABEL_KEY = "inloop:mockUserLabel";
 
@@ -32,6 +33,7 @@ export function getMockUserLabel(): string | null {
   }
 }
 
+/** 手机号 / 微信等通用登录：复用上次的随机 UUID（或生成新的） */
 export function loginWithMock(label: string): string {
   const id = getMockUserId() ?? uuid();
   try {
@@ -41,6 +43,18 @@ export function loginWithMock(label: string): string {
     /* noop */
   }
   return id;
+}
+
+/** 🔧 开发者测试通道：直接以固定 mock 用户身份登录 */
+export function loginAsMockUser(key: MockUserKey): string {
+  const u = MOCK_USERS[key];
+  try {
+    localStorage.setItem(USER_KEY, u.id);
+    localStorage.setItem(USER_LABEL_KEY, u.label);
+  } catch {
+    /* noop */
+  }
+  return u.id;
 }
 
 export function logoutMock() {
