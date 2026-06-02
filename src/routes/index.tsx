@@ -948,22 +948,6 @@ function Index() {
         onVoiceAlarmChange={changeVoiceAlarm}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
-      <section className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-72 w-full max-w-md overflow-auto border-t-4 border-primary bg-primary/10 px-4 py-3 text-foreground shadow-[0_-12px_40px_-18px_rgba(0,0,0,0.35)] md:max-w-2xl">
-        <div className="flex flex-col gap-1 text-[13px] font-black leading-tight sm:flex-row sm:items-center sm:justify-between">
-          <span>🧪 Developer Debug Panel</span>
-          <span>Current Mock User ID: {userId ?? "NULL"}</span>
-          <span>User_Me: {userId === MOCK_USERS.me.id ? "YES" : "NO"}</span>
-          <span>Total Tasks Fetched: {rawTaskRows.length}</span>
-        </div>
-        {rawTaskError && (
-          <p className="mt-2 rounded-md bg-red-100 px-2 py-1 text-[12px] font-bold text-red-700">
-            Raw fetch error: {rawTaskError}
-          </p>
-        )}
-        <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-background/80 p-2 text-[10px] leading-snug text-foreground">
-          {JSON.stringify(rawTaskRows, null, 2)}
-        </pre>
-      </section>
       {/* Edge-swipe hint strip (visual cue, also clickable) */}
       <button
         type="button"
