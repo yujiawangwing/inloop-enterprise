@@ -82,7 +82,7 @@ export function OwnerSelector({
                     isMe && "ring-1 ring-primary/30",
                   )}
                 >
-                  {isMe ? "我本人" : u.label}
+                  {isMe ? `${u.label} · 我` : u.label}
                 </span>
               );
             })}
@@ -118,11 +118,11 @@ export function OwnerSelector({
                     u.avatarColor,
                   )}
                 >
-                  {u.label.replace("User_", "")}
+                  {u.label.slice(-1)}
                 </span>
                 <span className="flex flex-col">
                   <span className="text-[12px] font-medium text-foreground">
-                    {isMe ? "我本人" : u.label}
+                    {u.label}{isMe && <span className="ml-1 text-[9.5px] text-primary">· 我</span>}
                   </span>
                   <span className="text-[9.5px] text-foreground/45">{u.handle}</span>
                 </span>
