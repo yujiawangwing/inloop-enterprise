@@ -575,6 +575,7 @@ function Index() {
           );
         }
       }
+      setReloadTick((n) => n + 1);
       return;
     }
 
@@ -592,6 +593,7 @@ function Index() {
       flow_status: ownerId === creatorId ? "accepted" : "pending",
     }));
     await supabase.from("tasks").insert(rows);
+    setReloadTick((n) => n + 1);
   }
 
 
@@ -743,6 +745,7 @@ function Index() {
 
     setVerifyOpen(false);
     setDrafts([]);
+    setReloadTick((n) => n + 1);
   }
 
 
