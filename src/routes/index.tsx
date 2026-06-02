@@ -153,6 +153,7 @@ function Index() {
   const [userId, setUserId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [rawTaskRows, setRawTaskRows] = useState<DbTask[]>([]);
+  const [rawTaskError, setRawTaskError] = useState<string | null>(null);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
@@ -277,7 +278,10 @@ function Index() {
         .order("created_at", { ascending: false });
       console.log("[Dashboard][Debug] Current Mock User ID =", uid);
       console.log("[Dashboard][Debug] Raw Tasks Array（未过滤）=", allTaskRows, "error =", allTaskError);
-      if (!cancelled) setRawTaskRows((allTaskRows ?? []) as DbTask[]);
+      if (!cancelled) {
+        setRawTaskRows((allTaskRows ?? []) as DbTask[]);
+        setRawTaskError(allTaskError ? allTaskError.message : null);
+      }
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
       console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
