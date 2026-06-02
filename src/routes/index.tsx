@@ -152,6 +152,8 @@ function Index() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTaskRows, setRawTaskRows] = useState<DbTask[]>([]);
+  const [rawTaskError, setRawTaskError] = useState<string | null>(null);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
@@ -169,6 +171,7 @@ function Index() {
   const today = todayISO();
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
 
@@ -267,6 +270,19 @@ function Index() {
 
       const dateObj = isoToDate(selectedDate);
       const targetDow = isoDow(dateObj);
+
+      // Debug: 完全不按日期 / owner / flow_status 过滤，直接读取 tasks 原始数组
+      const { data: allTaskRows, error: allTaskError } = await supabase
+        .from("tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+      console.log("[Dashboard][Debug] Current Mock User ID =", uid);
+      console.log("[Dashboard][Debug] Total Tasks Fetched =", allTaskRows?.length ?? 0);
+      console.log("[Dashboard][Debug] Raw Tasks Array（未过滤）=", allTaskRows, "error =", allTaskError);
+      if (!cancelled) {
+        setRawTaskRows((allTaskRows ?? []) as DbTask[]);
+        setRawTaskError(allTaskError ? allTaskError.message : null);
+      }
 
       // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
       console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
@@ -465,7 +481,7 @@ function Index() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selectedDate, today, userId]);
+  }, [selectedDate, today, userId, reloadTick]);
 
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
@@ -564,6 +580,7 @@ function Index() {
           );
         }
       }
+      setReloadTick((n) => n + 1);
       return;
     }
 
@@ -581,6 +598,7 @@ function Index() {
       flow_status: ownerId === creatorId ? "accepted" : "pending",
     }));
     await supabase.from("tasks").insert(rows);
+    setReloadTick((n) => n + 1);
   }
 
 
@@ -732,6 +750,7 @@ function Index() {
 
     setVerifyOpen(false);
     setDrafts([]);
+    setReloadTick((n) => n + 1);
   }
 
 
@@ -894,6 +913,22 @@ function Index() {
         onVoiceAlarmChange={changeVoiceAlarm}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
+      <section className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-72 w-full max-w-md overflow-auto border-t-4 border-primary bg-primary/10 px-4 py-3 text-foreground shadow-[0_-12px_40px_-18px_rgba(0,0,0,0.35)] md:max-w-2xl">
+        <div className="flex flex-col gap-1 text-[13px] font-black leading-tight sm:flex-row sm:items-center sm:justify-between">
+          <span>🧪 Developer Debug Panel</span>
+          <span>Current Mock User ID: {userId ?? "NULL"}</span>
+          <span>User_Me: {userId === MOCK_USERS.me.id ? "YES" : "NO"}</span>
+          <span>Total Tasks Fetched: {rawTaskRows.length}</span>
+        </div>
+        {rawTaskError && (
+          <p className="mt-2 rounded-md bg-red-100 px-2 py-1 text-[12px] font-bold text-red-700">
+            Raw fetch error: {rawTaskError}
+          </p>
+        )}
+        <pre className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-background/80 p-2 text-[10px] leading-snug text-foreground">
+          {JSON.stringify(rawTaskRows, null, 2)}
+        </pre>
+      </section>
       {/* Edge-swipe hint strip (visual cue, also clickable) */}
       <button
         type="button"
