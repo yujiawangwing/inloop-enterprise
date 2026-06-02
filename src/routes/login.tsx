@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageCircle, Smartphone, ShieldCheck } from "lucide-react";
-import { loginWithMock, getMockUserId } from "@/lib/mockAuth";
+import { loginWithMock, getMockUserId, loginAsMockUser } from "@/lib/mockAuth";
+import { MOCK_USER_LIST } from "@/lib/mockUsers";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
