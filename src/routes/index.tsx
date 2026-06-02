@@ -792,8 +792,42 @@ function Index() {
           <p className="mt-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             INLOOP — HIGH-IQ EXECUTIVE AGENDA COLLABORATION AGENT
           </p>
-
         </div>
+
+        {/* 当前操作员挂牌 · 一键切换账户 */}
+        {(() => {
+          const me = getMockUserById(userId);
+          const displayLabel = me?.label ?? "当前用户";
+          return (
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-full border border-foreground/10 bg-card/70 px-2.5 py-1 shadow-[0_1px_2px_rgba(34,34,34,0.03)]">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
+                    me?.avatarColor ?? "bg-foreground/10 text-foreground/70",
+                  )}
+                >
+                  {displayLabel.slice(-1)}
+                </span>
+                <span className="truncate text-[10.5px] tracking-wide text-foreground/65">
+                  当前操作员：<span className="font-medium text-foreground">{displayLabel}</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  logoutMock();
+                  navigate({ to: "/login", replace: true });
+                }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+                aria-label="切换账户"
+              >
+                <LogOut className="h-3 w-3" />
+                切换账户
+              </button>
+            </div>
+          );
+        })()}
       </header>
 
       {!isFamily && (
