@@ -76,7 +76,7 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
       time: normalizedTime,
       title: String(d.title).slice(0, 80),
       link: d.link ?? undefined,
-      note: d.ai_summary ?? undefined,
+      note: (d.note && String(d.note).trim()) ? String(d.note).trim() : (d.ai_summary ?? undefined),
       execution_date: validDate,
       is_recurring: isRecurring,
       recurrence_type: recurrenceType,
