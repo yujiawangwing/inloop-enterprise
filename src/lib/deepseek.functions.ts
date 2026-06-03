@@ -117,12 +117,49 @@ const SYSTEM_PROMPT = `你是一位高智感家庭与事务协同管家。你将
    - 用户未提到任何日期字眼时，date 默认 = 当前日期。
 8. 每个任务对象必须额外携带 "date" 字段（"YYYY-MM-DD"）。
 
-最终严格输出标准 JSON 数组，禁止任何 Markdown 包裹。每个对象必须包含字段：date, time, title, link, ai_summary, is_recurring, recurrence_type, recurrence_days。`;
+【重要能力升级：智能备注（note）提取 — 标题与执行细节分离】
+9. 你必须把用户长指令智能拆为「核心事件」和「执行细节 / 目的 / 补充说明」两部分：
+   - title 字段：仅保留最精简的核心事件名（如"开周会"、"拜访 A 客户"、"参加技术峰会"），不要把背景/讨论内容塞进去，控制在 16 字以内更佳。
+   - note 字段：把指令中所有"讨论的项目细节、要带的资料、参会目的、地点细节、对方姓名、注意事项"等补充信息精简成一句话填进来；若没有任何额外细节，note 必须为 null（不要写空字符串、不要写"无"、不要复述 title）。
+
+【示例 - 标题/备注分离】：
+输入：用户指令="明天下午两点跟张总在中关村开周会，讨论一下 Q3 半导体出货量和明年研发预算"
+正确返回：
+[
+  {
+    "time": "14:00",
+    "title": "与张总周会（中关村）",
+    "note": "讨论 Q3 半导体出货量与明年研发预算",
+    "link": null,
+    "ai_summary": null,
+    "is_recurring": false,
+    "recurrence_type": null,
+    "recurrence_days": null
+  }
+]
+
+输入：用户指令="6点开会"
+正确返回：
+[
+  {
+    "time": "18:00",
+    "title": "开会",
+    "note": null,
+    "link": null,
+    "ai_summary": null,
+    "is_recurring": false,
+    "recurrence_type": null,
+    "recurrence_days": null
+  }
+]
+
+最终严格输出标准 JSON 数组，禁止任何 Markdown 包裹。每个对象必须包含字段：date, time, title, note, link, ai_summary, is_recurring, recurrence_type, recurrence_days。`;
 
 export interface DeepSeekDraft {
   date?: string;
   time?: string;
   title?: string;
+  note?: string | null;
   link?: string | null;
   ai_summary?: string | null;
   is_recurring?: boolean | null;

@@ -135,7 +135,7 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
                 <textarea
                   value={d.note ?? ""}
                   onChange={(e) => updateField(i, "note", e.target.value || undefined)}
-                  placeholder="AI 一句话重点（可选）"
+                  placeholder="添加附加信息或执行细节（可选）..."
                   rows={2}
                   className="mt-1.5 block w-full resize-none rounded-md border border-foreground/10 bg-background px-2.5 py-1.5 text-[11.5px] leading-relaxed text-foreground/70 placeholder:text-foreground/30 focus:border-primary/40 focus:outline-none"
                 />

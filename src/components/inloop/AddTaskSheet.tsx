@@ -9,6 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +28,7 @@ export type Recurrence = "none" | "daily" | "weekly";
 export interface NewTaskPayload {
   time: string;
   title: string;
+  note?: string;
   date: Date;
   recurrence: Recurrence;
   image_url?: string;
@@ -52,6 +54,7 @@ function isSameDay(a: Date, b: Date) {
 export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props) {
   const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
     onAdd({
       time,
       title: title.trim(),
+      note: note.trim() || undefined,
       date,
       recurrence,
       image_url: imageUrl ?? undefined,
@@ -80,6 +84,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
     });
     setTime("");
     setTitle("");
+    setNote("");
     setDate(new Date());
     setRecurrence("none");
     setImageUrl(null);
@@ -239,6 +244,24 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
               </Popover>
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="note"
+              className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+            >
+              📝 任务备注 / 详情描述
+            </Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="添加附加信息或执行细节（可选）..."
+              rows={3}
+              className="min-h-[72px] rounded-xl border-foreground/25 bg-background text-[13.5px] leading-relaxed"
+            />
+          </div>
+
 
           <div className="space-y-1.5">
             <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">

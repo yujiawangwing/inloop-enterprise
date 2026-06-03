@@ -76,7 +76,7 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
       time: normalizedTime,
       title: String(d.title).slice(0, 80),
       link: d.link ?? undefined,
-      note: d.ai_summary ?? undefined,
+      note: (d.note && String(d.note).trim()) ? String(d.note).trim() : (d.ai_summary ?? undefined),
       execution_date: validDate,
       is_recurring: isRecurring,
       recurrence_type: recurrenceType,
@@ -536,12 +536,14 @@ function Index() {
   async function add(payload: {
     time: string;
     title: string;
+    note?: string;
     date: Date;
     recurrence: "none" | "daily" | "weekly";
     image_url?: string;
     owner_ids: string[];
   }) {
-    const { time, title, date, recurrence, image_url, owner_ids } = payload;
+    const { time, title, note, date, recurrence, image_url, owner_ids } = payload;
+    const noteVal = note && note.trim() ? note.trim() : null;
     const creatorId = userId ?? MOCK_USERS.me.id;
     // 🔑 归一化：mock "me" 槽位 → 真实登录 uid，保证写入与看板过滤完全对齐
     const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
@@ -559,6 +561,7 @@ function Index() {
           .insert({
             time,
             title,
+            note: noteVal,
             active: true,
             user_id: ownerId,
             owner_id: ownerId,
@@ -573,6 +576,7 @@ function Index() {
               type: "routine" as const,
               time,
               title,
+              note: noteVal,
               image_url: image_url ?? null,
               execution_date: today,
               routine_id: routine.id,
@@ -595,6 +599,7 @@ function Index() {
         | "temporary",
       time,
       title,
+      note: noteVal,
       image_url: image_url ?? null,
       execution_date: iso,
       user_id: ownerId,
