@@ -246,6 +246,22 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
           </div>
 
           <div className="space-y-1.5">
+            <Label
+              htmlFor="note"
+              className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground"
+            >
+              📝 任务备注 / 详情描述
+            </Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="添加附加信息或执行细节（可选）..."
+              rows={3}
+              className="min-h-[72px] rounded-xl border-foreground/25 bg-background text-[13.5px] leading-relaxed"
+            />
+
+          <div className="space-y-1.5">
             <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
               👥 协同目标 (To:)
             </Label>
