@@ -517,8 +517,12 @@ function Index() {
   }
 
   async function handleDelete(id: string) {
+    // 🚀 乐观更新：立刻从所有本地列表移除，无需等后端
+    setTasks((ts) => ts.filter((t) => t.id !== id));
+    setTodayAlarmTasks((ts) => ts.filter((t) => t.id !== id));
+    setMilestones((ms) => ms.filter((m) => m.id !== id));
+    setPendingTasks((ps) => ps.filter((p) => p.id !== id));
     if (id.startsWith("vr-")) {
-      // 虚拟 routine：提取原始 routineId 并从 routines 表删除
       const routineId = id.replace(/^vr-/, "").split("-")[0];
       if (routineId) {
         await supabase.from("routines").delete().eq("id", routineId);
