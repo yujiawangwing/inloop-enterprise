@@ -145,10 +145,11 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
             >
               {task.title}
             </p>
-            {task.note && !isFamily && (
+            {task.note && task.note.trim() && (
               <p
                 className={cn(
-                  "mt-1 break-words text-[12.5px] leading-relaxed text-muted-foreground transition-all",
+                  "break-words leading-relaxed text-foreground/60 transition-all",
+                  isFamily ? "mt-1.5 text-[15px]" : "mt-1 text-[12.5px] text-muted-foreground",
                   task.done && "line-through decoration-foreground/40",
                 )}
               >
