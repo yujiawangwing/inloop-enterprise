@@ -847,6 +847,7 @@ function Index() {
           creator_id: t.creator_id ?? null,
           owner_id: t.owner_id ?? null,
         }))}
+        onChanged={() => setReloadTick((n) => n + 1)}
       />
 
 
