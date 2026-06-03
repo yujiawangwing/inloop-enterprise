@@ -28,6 +28,7 @@ export type Recurrence = "none" | "daily" | "weekly";
 export interface NewTaskPayload {
   time: string;
   title: string;
+  note?: string;
   date: Date;
   recurrence: Recurrence;
   image_url?: string;
