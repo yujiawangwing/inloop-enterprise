@@ -260,6 +260,8 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
               rows={3}
               className="min-h-[72px] rounded-xl border-foreground/25 bg-background text-[13.5px] leading-relaxed"
             />
+          </div>
+
 
           <div className="space-y-1.5">
             <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
