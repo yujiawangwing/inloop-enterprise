@@ -159,6 +159,7 @@ export interface DeepSeekDraft {
   date?: string;
   time?: string;
   title?: string;
+  note?: string | null;
   link?: string | null;
   ai_summary?: string | null;
   is_recurring?: boolean | null;
