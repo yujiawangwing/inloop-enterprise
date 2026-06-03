@@ -852,7 +852,44 @@ function Index() {
           owner_id: t.owner_id ?? null,
         }))}
         onChanged={() => setReloadTick((n) => n + 1)}
+        onOptimisticAccept={(pt) => {
+          setPendingTasks((ps) => ps.filter((x) => x.id !== pt.id));
+          const belongsToView = (pt.execution_date ?? today) === selectedDate;
+          if (belongsToView) {
+            const newTask: Task = {
+              id: pt.id,
+              type: "temporary",
+              time: pt.time,
+              title: pt.title,
+              note: pt.note ?? undefined,
+              image_url: pt.image_url ?? undefined,
+              execution_date: pt.execution_date ?? undefined,
+              done: false,
+              feedback_tag: "received",
+              creator_id: pt.creator_id ?? null,
+              owner_id: pt.owner_id ?? null,
+              flow_status: "accepted",
+            };
+            setTasks((ts) => {
+              const without = ts.filter((x) => x.id !== pt.id);
+              const next = [...without, newTask];
+              next.sort((a, b) => a.time.localeCompare(b.time));
+              return next;
+            });
+            if ((pt.execution_date ?? today) === today) {
+              setTodayAlarmTasks((ts) => {
+                const without = ts.filter((x) => x.id !== pt.id);
+                return [...without, newTask];
+              });
+            }
+          }
+        }}
+        onOptimisticConflict={(pt) => {
+          // 冲突仅本地高亮标签即可，不需移出气泡
+          setPendingTasks((ps) => ps.map((x) => (x.id === pt.id ? { ...x } : x)));
+        }}
       />
+
 
 
 
