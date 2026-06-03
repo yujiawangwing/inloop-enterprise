@@ -19,33 +19,42 @@ export interface PendingTask {
 interface Props {
   tasks: PendingTask[];
   onChanged?: () => void;
+  onOptimisticAccept?: (task: PendingTask) => void;
+  onOptimisticConflict?: (task: PendingTask) => void;
 }
 
-export function PendingInbox({ tasks, onChanged }: Props) {
+export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisticConflict }: Props) {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   if (tasks.length === 0) return null;
 
-  async function accept(id: string) {
-    setBusyId(id);
-    await supabase
+  function accept(task: PendingTask) {
+    setBusyId(task.id);
+    // 🚀 乐观更新：父组件立刻把卡片从气泡移除并塞进主时间轴
+    onOptimisticAccept?.(task);
+    supabase
       .from("tasks")
       .update({ flow_status: "accepted", feedback_tag: "received" })
-      .eq("id", id);
-    setBusyId(null);
-    onChanged?.();
+      .eq("id", task.id)
+      .then(({ error }) => {
+        setBusyId((b) => (b === task.id ? null : b));
+        if (error) onChanged?.();
+      });
   }
 
-  async function conflict(id: string) {
-    setBusyId(id);
-    await supabase
+  function conflict(task: PendingTask) {
+    setBusyId(task.id);
+    onOptimisticConflict?.(task);
+    supabase
       .from("tasks")
       .update({ feedback_tag: "conflict" })
-      .eq("id", id);
-    setBusyId(null);
-    onChanged?.();
+      .eq("id", task.id)
+      .then(({ error }) => {
+        setBusyId((b) => (b === task.id ? null : b));
+        if (error) onChanged?.();
+      });
   }
 
   return (
@@ -131,7 +140,7 @@ export function PendingInbox({ tasks, onChanged }: Props) {
                 <div className="mt-2.5 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
-                    onClick={() => conflict(t.id)}
+                    onClick={() => conflict(t)}
                     disabled={busyId === t.id}
                     className="inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-card px-2.5 py-1 text-[10.5px] font-medium text-foreground/65 transition-all hover:border-foreground/25 hover:text-foreground/85 active:scale-95 disabled:opacity-50"
                   >
@@ -140,7 +149,7 @@ export function PendingInbox({ tasks, onChanged }: Props) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => accept(t.id)}
+                    onClick={() => accept(t)}
                     disabled={busyId === t.id}
                     className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[10.5px] font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
                   >
