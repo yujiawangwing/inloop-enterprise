@@ -245,25 +245,33 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
 
         {previewUrl ? (
           <div className="relative shrink-0">
-            <img
-              src={previewUrl}
-              alt="行程截图本地预览"
-              className="h-16 w-16 rounded-lg border border-foreground/12 object-cover shadow-sm"
-            />
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label="查看大图预览"
+              className="block overflow-hidden rounded-lg border border-foreground/12 shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
+            >
+              <img
+                src={previewUrl}
+                alt="行程截图本地预览"
+                className="h-16 w-16 object-cover"
+              />
+            </button>
             {uploading && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
               </div>
             )}
             <button
               type="button"
-              onClick={clearAttachment}
+              onClick={(e) => { e.stopPropagation(); clearAttachment(); }}
               aria-label="移除附件"
               className="absolute -right-1.5 -top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow ring-2 ring-background transition-all hover:scale-105 active:scale-95"
             >
               <X className="h-2.5 w-2.5 stroke-[2.5]" />
             </button>
           </div>
+
         ) : (
           <button
             type="button"
