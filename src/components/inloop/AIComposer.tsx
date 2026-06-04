@@ -3,7 +3,9 @@ import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import { OwnerSelector } from "./OwnerSelector";
+import { ImageLightbox } from "./ImageLightbox";
 import { MOCK_USERS } from "@/lib/mockUsers";
+
 
 interface Props {
   onSync: (instruction: string, attachmentUrl: string, ownerIds: string[]) => void;
@@ -30,7 +32,10 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
+
+
   useEffect(() => {
     if (currentUserId) {
       setOwnerIds((prev) => {
@@ -173,6 +178,11 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
 
   return (
     <div className="rounded-2xl border border-foreground/10 bg-card p-2.5 shadow-[0_1px_2px_rgba(34,34,34,0.04),0_12px_32px_-14px_rgba(34,34,34,0.12)] transition-all focus-within:border-primary/40 focus-within:shadow-[0_1px_2px_rgba(34,34,34,0.04),0_16px_40px_-14px_rgba(107,122,106,0.25)]">
+      <ImageLightbox
+        src={lightboxOpen ? (previewUrl ?? attachmentUrl ?? null) : null}
+        onClose={() => setLightboxOpen(false)}
+      />
+
       <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
           <Sparkles className="h-2.5 w-2.5 shrink-0 text-primary" />
@@ -235,25 +245,33 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
 
         {previewUrl ? (
           <div className="relative shrink-0">
-            <img
-              src={previewUrl}
-              alt="行程截图本地预览"
-              className="h-16 w-16 rounded-lg border border-foreground/12 object-cover shadow-sm"
-            />
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label="查看大图预览"
+              className="block overflow-hidden rounded-lg border border-foreground/12 shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
+            >
+              <img
+                src={previewUrl}
+                alt="行程截图本地预览"
+                className="h-16 w-16 object-cover"
+              />
+            </button>
             {uploading && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/35 backdrop-blur-[1px]">
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
               </div>
             )}
             <button
               type="button"
-              onClick={clearAttachment}
+              onClick={(e) => { e.stopPropagation(); clearAttachment(); }}
               aria-label="移除附件"
               className="absolute -right-1.5 -top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background shadow ring-2 ring-background transition-all hover:scale-105 active:scale-95"
             >
               <X className="h-2.5 w-2.5 stroke-[2.5]" />
             </button>
           </div>
+
         ) : (
           <button
             type="button"
