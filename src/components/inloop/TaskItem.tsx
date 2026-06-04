@@ -87,25 +87,55 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
           isFamily ? "w-20" : "w-14",
         )}
       >
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 font-medium tracking-[0.14em] text-foreground/70 transition-opacity",
-            isFamily ? "text-[17px]" : "text-[11px]",
-            task.done && "opacity-40",
-          )}
-        >
-          {task.type === "routine" && (
-            <span
-              aria-hidden
-              title="常规循环任务"
-              className={cn(
-                "inline-block rounded-full bg-[#7A9B76]",
-                isFamily ? "h-[7px] w-[7px]" : "h-[5px] w-[5px]",
-              )}
-            />
-          )}
-          {task.time}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          {(() => {
+            if (!task.execution_date || !/^\d{4}-\d{2}-\d{2}$/.test(task.execution_date)) return null;
+            const today = new Date();
+            const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+            const [y, m, d] = task.execution_date.split("-").map(Number);
+            const t1 = new Date(y, m - 1, d).getTime();
+            const diff = Math.round((t1 - t0) / 86400000);
+            if (diff === 0) return null; // 今天不展示日期，保持简洁
+            const mm = String(m).padStart(2, "0");
+            const dd = String(d).padStart(2, "0");
+            const label = diff === 1 ? `明天 ${mm}/${dd}` : `${mm}/${dd}`;
+            return (
+              <span
+                className={cn(
+                  "rounded-sm px-1 font-medium leading-tight tracking-tight",
+                  isFamily ? "text-[12px]" : "text-[9.5px]",
+                  diff === 1
+                    ? "bg-orange-500/15 text-orange-700"
+                    : diff > 1
+                      ? "bg-primary/10 text-primary"
+                      : "bg-foreground/5 text-foreground/45",
+                  task.done && "opacity-50",
+                )}
+              >
+                {label}
+              </span>
+            );
+          })()}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 font-medium tracking-[0.14em] text-foreground/70 transition-opacity",
+              isFamily ? "text-[17px]" : "text-[11px]",
+              task.done && "opacity-40",
+            )}
+          >
+            {task.type === "routine" && (
+              <span
+                aria-hidden
+                title="常规循环任务"
+                className={cn(
+                  "inline-block rounded-full bg-[#7A9B76]",
+                  isFamily ? "h-[7px] w-[7px]" : "h-[5px] w-[5px]",
+                )}
+              />
+            )}
+            {task.time}
+          </span>
+        </div>
       </div>
 
       <div
