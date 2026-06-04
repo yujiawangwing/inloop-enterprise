@@ -3,7 +3,9 @@ import { Send, Sparkles, ImagePlus, Mic, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import { OwnerSelector } from "./OwnerSelector";
+import { ImageLightbox } from "./ImageLightbox";
 import { MOCK_USERS } from "@/lib/mockUsers";
+
 
 interface Props {
   onSync: (instruction: string, attachmentUrl: string, ownerIds: string[]) => void;
