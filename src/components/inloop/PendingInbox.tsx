@@ -23,6 +23,21 @@ interface Props {
   onOptimisticConflict?: (task: PendingTask) => void;
 }
 
+function formatExecDate(iso?: string | null): { label: string; tone: "today" | "tomorrow" | "future" | "past" } | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const today = new Date();
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const [y, m, d] = iso.split("-").map(Number);
+  const t1 = new Date(y, m - 1, d).getTime();
+  const diff = Math.round((t1 - t0) / 86400000);
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  if (diff === 0) return { label: `今天 ${mm}/${dd}`, tone: "today" };
+  if (diff === 1) return { label: `明天 ${mm}/${dd}`, tone: "tomorrow" };
+  if (diff < 0) return { label: `${mm}/${dd}`, tone: "past" };
+  return { label: `${mm}/${dd}`, tone: "future" };
+}
+
 export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisticConflict }: Props) {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -96,12 +111,33 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
             const creator = getMockUserById(t.creator_id);
             const creatorLabel = creator?.label ?? "同事";
             const isMine = t.creator_id === t.owner_id;
+            const dateInfo = formatExecDate(t.execution_date);
             return (
               <li key={t.id} className="px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-[0.06em] text-amber-700">
-                    {t.time}
-                  </span>
+                  <div className="mt-0.5 flex shrink-0 flex-col items-center gap-0.5">
+                    {dateInfo && (
+                      <span
+                        className={cn(
+                          "rounded-t-md px-1.5 pt-0.5 text-[9.5px] font-semibold leading-tight tracking-tight",
+                          dateInfo.tone === "today" && "bg-amber-500/15 text-amber-800",
+                          dateInfo.tone === "tomorrow" && "bg-orange-500/20 text-orange-800",
+                          dateInfo.tone === "future" && "bg-amber-500/10 text-amber-700/80",
+                          dateInfo.tone === "past" && "bg-foreground/5 text-foreground/45",
+                        )}
+                      >
+                        {dateInfo.label}
+                      </span>
+                    )}
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-bold tracking-[0.06em] text-amber-800",
+                        dateInfo && "rounded-t-none",
+                      )}
+                    >
+                      {t.time}
+                    </span>
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="break-words text-[13px] font-medium leading-snug text-foreground">
                       {t.title}
@@ -114,11 +150,6 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
                     {!isMine && (
                       <p className="mt-1 text-[10px] text-foreground/45">
                         来自 {creatorLabel} 的协同指派
-                      </p>
-                    )}
-                    {t.execution_date && (
-                      <p className="mt-0.5 text-[10px] text-foreground/40">
-                        执行日 · {t.execution_date}
                       </p>
                     )}
                     {t.image_url && (
