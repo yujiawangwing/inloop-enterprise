@@ -23,6 +23,21 @@ interface Props {
   onOptimisticConflict?: (task: PendingTask) => void;
 }
 
+function formatExecDate(iso?: string | null): { label: string; tone: "today" | "tomorrow" | "future" | "past" } | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const today = new Date();
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const [y, m, d] = iso.split("-").map(Number);
+  const t1 = new Date(y, m - 1, d).getTime();
+  const diff = Math.round((t1 - t0) / 86400000);
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  if (diff === 0) return { label: `今天 ${mm}/${dd}`, tone: "today" };
+  if (diff === 1) return { label: `明天 ${mm}/${dd}`, tone: "tomorrow" };
+  if (diff < 0) return { label: `${mm}/${dd}`, tone: "past" };
+  return { label: `${mm}/${dd}`, tone: "future" };
+}
+
 export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisticConflict }: Props) {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
