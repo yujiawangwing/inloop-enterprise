@@ -178,6 +178,11 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
 
   return (
     <div className="rounded-2xl border border-foreground/10 bg-card p-2.5 shadow-[0_1px_2px_rgba(34,34,34,0.04),0_12px_32px_-14px_rgba(34,34,34,0.12)] transition-all focus-within:border-primary/40 focus-within:shadow-[0_1px_2px_rgba(34,34,34,0.04),0_16px_40px_-14px_rgba(107,122,106,0.25)]">
+      <ImageLightbox
+        src={lightboxOpen ? (previewUrl ?? attachmentUrl ?? null) : null}
+        onClose={() => setLightboxOpen(false)}
+      />
+
       <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
           <Sparkles className="h-2.5 w-2.5 shrink-0 text-primary" />
