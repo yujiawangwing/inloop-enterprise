@@ -219,26 +219,8 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
 
 
 
-            {/* Console-mode status label */}
-            {!isFamily && (
-              <div className="mt-3 flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    task.done ? "bg-primary" : "bg-amber-500",
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-[10.5px] font-medium tracking-[0.08em]",
-                    task.done ? "text-primary" : "text-amber-600",
-                  )}
-                >
-                  {task.done ? "已闭环 · Closed" : "进行中 · In Progress"}
-                </span>
-              </div>
-            )}
+
+
           </div>
 
           {isFamily ? (
