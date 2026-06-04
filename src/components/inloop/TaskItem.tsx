@@ -317,85 +317,8 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
           </div>
         )}
 
-        {/* —— Console mode: 完整的快捷批注 / 反馈系统 —— */}
-        {!isFamily && (
-          <div className="mt-2 ml-1 flex flex-wrap items-center gap-1.5">
-            {FEEDBACK_TAGS.map((t) => {
-              const active = feedbackTag === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => pickTag(t.key)}
-                  aria-pressed={active}
-                  className={cn(
-                    "rounded-full border px-2 py-0.5 text-[10.5px] tracking-tight transition-all active:scale-95",
-                    active
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-foreground/10 bg-card text-foreground/55 hover:border-foreground/25 hover:text-foreground/80",
-                  )}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
 
-            <Popover open={commentOpen} onOpenChange={(o) => { setCommentOpen(o); if (o) setCommentDraft(comment); }}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] tracking-tight transition-all active:scale-95",
-                    comment
-                      ? "border-foreground/20 bg-foreground/[0.04] text-foreground/80"
-                      : "border-dashed border-foreground/15 bg-transparent text-foreground/45 hover:border-foreground/30 hover:text-foreground/70",
-                  )}
-                  aria-label="添加批注"
-                >
-                  <MessageSquarePlus className="h-3 w-3" />
-                  {comment ? comment : "添加批注"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                sideOffset={6}
-                className="w-64 rounded-xl border-foreground/10 bg-card p-3 shadow-[0_8px_30px_-12px_rgba(34,34,34,0.18)]"
-              >
-                <p className="text-[10.5px] font-medium uppercase tracking-[0.16em] text-foreground/55">
-                  快捷批注
-                </p>
-                <input
-                  autoFocus
-                  type="text"
-                  value={commentDraft}
-                  maxLength={80}
-                  onChange={(e) => setCommentDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); saveComment(); }
-                  }}
-                  placeholder="如：需准备 B 版 PPT"
-                  className="mt-2 w-full rounded-md border border-foreground/15 bg-background px-2.5 py-1.5 text-[12.5px] text-foreground placeholder:text-foreground/35 focus:border-primary focus:outline-none"
-                />
-                <div className="mt-2.5 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setCommentDraft(""); saveComment(); }}
-                    className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-foreground/55 transition-all hover:bg-foreground/5 hover:text-foreground"
-                  >
-                    清除
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveComment}
-                    className="rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground transition-all hover:bg-primary/90"
-                  >
-                    钉上批注
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
+
       </div>
     </div>
   );
