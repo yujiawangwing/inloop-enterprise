@@ -33,6 +33,8 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
+
 
   useEffect(() => {
     if (currentUserId) {
