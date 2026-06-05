@@ -69,7 +69,12 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-h-[88vh] max-w-[420px] overflow-y-auto rounded-2xl border-foreground/10 bg-background p-0 sm:rounded-2xl">
+      <DialogContent
+        className="max-h-[88vh] max-w-[420px] overflow-y-auto rounded-2xl border-foreground/10 bg-background p-0 sm:rounded-2xl"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader className="space-y-2 border-b border-foreground/8 px-6 pb-5 pt-6 text-left">
           <div className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-primary">
             {isEditing ? <Pencil className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
