@@ -108,6 +108,9 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props
       <SheetContent
         side="bottom"
         className="rounded-t-3xl border-foreground/10 bg-background px-6 pb-8 pt-6"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-foreground/15" />
         <SheetHeader className="text-left">
