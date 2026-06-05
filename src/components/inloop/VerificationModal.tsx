@@ -67,14 +67,14 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
 
   const list = isEditing ? editable : drafts;
 
+  // 受控关闭：只接受显式按钮触发的 close（onCancel / 保存）。
+  // Radix 在外部点击 / Esc 时也会回调 onOpenChange(false)，此处直接忽略，
+  // 不挂任何 onPointerDownOutside / onInteractOutside / onEscapeKeyDown 拦截。
   return (
-    <Dialog open={open} onOpenChange={() => undefined}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) { /* ignore implicit close */ } }}>
       <DialogContent
         className="max-h-[88vh] max-w-[420px] overflow-y-auto rounded-2xl border-foreground/10 bg-background p-0 sm:rounded-2xl"
         hideCloseButton
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <button
           type="button"
