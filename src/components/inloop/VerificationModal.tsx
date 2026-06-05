@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ShieldCheck, Sparkles, Pencil, Repeat, Users } from "lucide-react";
+import { ShieldCheck, Sparkles, Pencil, Repeat, Users, X } from "lucide-react";
 import type { DraftTask } from "@/lib/parseDraft";
 import { ImageUploader } from "./ImageUploader";
 import { ImageLightbox } from "./ImageLightbox";
@@ -68,13 +68,22 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
   const list = isEditing ? editable : drafts;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
+    <Dialog open={open} onOpenChange={() => undefined}>
       <DialogContent
         className="max-h-[88vh] max-w-[420px] overflow-y-auto rounded-2xl border-foreground/10 bg-background p-0 sm:rounded-2xl"
+        hideCloseButton
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          aria-label="关闭"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <DialogHeader className="space-y-2 border-b border-foreground/8 px-6 pb-5 pt-6 text-left">
           <div className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-primary">
             {isEditing ? <Pencil className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
