@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface Props {
@@ -7,48 +5,22 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * 极简大图预览：纯 Tailwind fixed 遮罩，无 Portal、无 Radix、无 Focus Trap。
+ * 父组件通过 `src` 条件渲染控制开关，关闭事件只切换父级 boolean，
+ * 因此绝不会干扰任何同级 Dialog/Sheet 的草稿状态。
+ */
 export function ImageLightbox({ src, onClose }: Props) {
-  useEffect(() => {
-    if (!src) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [src, onClose]);
-
   if (!src) return null;
-  if (typeof document === "undefined") return null;
 
-  const handleClose = (e: React.MouseEvent | React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onClose();
-  };
-
-  const swallow = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-  };
-
-  return createPortal(
+  return (
     <div
-      role="dialog"
-      aria-modal="true"
-      onClick={handleClose}
-      onPointerDown={swallow}
-      onPointerUp={swallow}
-      onMouseDown={swallow}
-      onMouseUp={swallow}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm animate-in fade-in"
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 px-4 py-6 cursor-zoom-out"
     >
       <button
         type="button"
-        onClick={handleClose}
-        onPointerDown={swallow}
-        onMouseDown={swallow}
+        onClick={onClose}
         aria-label="关闭大图"
         className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95"
       >
@@ -56,13 +28,10 @@ export function ImageLightbox({ src, onClose }: Props) {
       </button>
       <img
         src={src}
-        alt="行程截图大图"
+        alt="大图预览"
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={swallow}
-        onMouseDown={swallow}
-        className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+        className="max-h-full max-w-full rounded-lg object-contain shadow-2xl cursor-default"
       />
-    </div>,
-    document.body,
+    </div>
   );
 }
