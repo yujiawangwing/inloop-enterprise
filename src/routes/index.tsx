@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 import { parseDraftWithDeepSeek, type DeepSeekDraft } from "@/lib/deepseek.functions";
+import { tryLocalParse } from "@/lib/localParse";
 import { WakeAlarmOverlay } from "@/components/inloop/WakeAlarmOverlay";
 import { useTaskAlarm } from "@/hooks/useTaskAlarm";
 
