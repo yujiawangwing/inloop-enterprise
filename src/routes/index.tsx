@@ -621,6 +621,21 @@ function Index() {
     }
     setDrafts([]);
     setVerifyOpen(false);
+
+    // 🚀 智能分流网关 · 优先尝试本地快车道（0ms 解析，不消耗 AI 额度）
+    const fastLane = tryLocalParse(instruction);
+    if (fastLane && fastLane.length > 0) {
+      const stamped = fastLane.map((d) => ({
+        ...d,
+        image_url: attachmentUrl || d.image_url,
+        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+      }));
+      setDrafts(stamped);
+      setVerifyOpen(true);
+      return;
+    }
+
+    // 🤖 慢车道 · 落到 AI 解析
     setAiLoading(true);
     try {
       let parsed: DraftTask[];
