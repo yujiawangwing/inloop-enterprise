@@ -266,8 +266,8 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
             {isEditing ? "保存并发布" : "确认发布"}
           </button>
         </div>
+        <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} mode="absolute" />
       </DialogContent>
-      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </Dialog>
   );
 }
