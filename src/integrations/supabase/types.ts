@@ -14,15 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       routines: {
         Row: {
           active: boolean
           created_at: string
-          creator_id: string | null
+          creator_id: string
           flow_status: string
           id: string
           note: string | null
-          owner_id: string | null
+          owner_id: string
           recurrence_days: number[]
           recurrence_type: string
           time: string
@@ -32,11 +56,11 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
-          creator_id?: string | null
+          creator_id: string
           flow_status?: string
           id?: string
           note?: string | null
-          owner_id?: string | null
+          owner_id: string
           recurrence_days?: number[]
           recurrence_type?: string
           time: string
@@ -46,11 +70,11 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
-          creator_id?: string | null
+          creator_id?: string
           flow_status?: string
           id?: string
           note?: string | null
-          owner_id?: string | null
+          owner_id?: string
           recurrence_days?: number[]
           recurrence_type?: string
           time?: string
@@ -63,7 +87,7 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string
-          creator_id: string | null
+          creator_id: string
           execution_date: string | null
           feedback_tag: string | null
           flow_status: string
@@ -72,7 +96,7 @@ export type Database = {
           is_completed: boolean
           link: string | null
           note: string | null
-          owner_id: string | null
+          owner_id: string
           routine_id: string | null
           time: string
           title: string
@@ -82,7 +106,7 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string
-          creator_id?: string | null
+          creator_id: string
           execution_date?: string | null
           feedback_tag?: string | null
           flow_status?: string
@@ -91,7 +115,7 @@ export type Database = {
           is_completed?: boolean
           link?: string | null
           note?: string | null
-          owner_id?: string | null
+          owner_id: string
           routine_id?: string | null
           time: string
           title: string
@@ -101,7 +125,7 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string
-          creator_id?: string | null
+          creator_id?: string
           execution_date?: string | null
           feedback_tag?: string | null
           flow_status?: string
@@ -110,7 +134,7 @@ export type Database = {
           is_completed?: boolean
           link?: string | null
           note?: string | null
-          owner_id?: string | null
+          owner_id?: string
           routine_id?: string | null
           time?: string
           title?: string
