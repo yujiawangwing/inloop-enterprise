@@ -185,6 +185,7 @@ function parseDeepSeekJsonArray(text: string): DeepSeekDraft[] {
 }
 
 export const parseDraftWithDeepSeek = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: { instruction: string; pastedLink?: string; localBaseline?: { date: string; time: string; dow: number } }) => {
     if (!data || typeof data.instruction !== "string") {
       throw new Error("instruction 必填");
