@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Menu, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Menu, Calendar as CalendarIcon, LogOut } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
 import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
 import type { Mode } from "@/components/inloop/ModeSwitch";
@@ -12,9 +12,7 @@ import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
-import { getMockUserId, logoutMock } from "@/lib/mockAuth";
-import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
-import { LogOut } from "lucide-react";
+import { MOCK_USERS } from "@/lib/mockUsers";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -24,11 +22,9 @@ import { tryLocalParse } from "@/lib/localParse";
 import { WakeAlarmOverlay } from "@/components/inloop/WakeAlarmOverlay";
 import { useTaskAlarm } from "@/hooks/useTaskAlarm";
 
-
 const VOICE_KEY = "inloop:voiceAlarm";
 
 async function callDeepSeek(instruction: string, pastedLink: string): Promise<DraftTask[]> {
-  // 强行注入用户设备本地时间，避免凌晨 UTC 错位导致 AI 日期解析 -1 天
   const now = new Date();
   const localBaseline = {
     date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
@@ -55,8 +51,7 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
     let recurrenceType: "daily" | "weekly" | null = null;
     let recurrenceDays: number[] | null = null;
     if (isRecurring) {
-      recurrenceType =
-        d.recurrence_type === "weekly" ? "weekly" : "daily";
+      recurrenceType = d.recurrence_type === "weekly" ? "weekly" : "daily";
       const days = Array.isArray(d.recurrence_days)
         ? d.recurrence_days.filter((n) => Number.isInteger(n) && n >= 1 && n <= 7)
         : [];
@@ -65,11 +60,9 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
           ? [1, 2, 3, 4, 5, 6, 7]
           : Array.from(new Set(days)).sort();
     }
-    // —— 解析 AI 返回的 date 字段 ——
     const todayStr = todayISO();
     const rawDate = String(d.date ?? "").trim();
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : todayStr;
-    // 单次任务：若 AI 给出的日期晚于今天，自动归类为 milestone（未来日程）
     const draftType: DraftTask["type"] =
       !isRecurring && validDate > todayStr ? "milestone" : "temporary";
     return {
@@ -85,9 +78,6 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
     };
   });
 }
-
-
-
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Index,
@@ -139,7 +129,7 @@ function rowToTask(r: DbTask): Task {
 }
 
 function isoDow(d: Date): number {
-  const js = d.getDay(); // 0=Sun..6=Sat
+  const js = d.getDay();
   return js === 0 ? 7 : js;
 }
 function dateToISO(d: Date): string {
@@ -153,9 +143,8 @@ function isoToDate(iso: string): Date {
 function Index() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("当前用户");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [rawTaskRows, setRawTaskRows] = useState<DbTask[]>([]);
-  const [rawTaskError, setRawTaskError] = useState<string | null>(null);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
@@ -177,18 +166,54 @@ function Index() {
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
 
-  // 高保真模拟登录守卫：未登录跳转到 /login
+  // —— Supabase Auth · 真实会话守卫（_authenticated 子树已统一兜底，这里仅同步本地状态）——
   useEffect(() => {
-    const uid = getMockUserId();
-    if (!uid) {
-      navigate({ to: "/login", replace: true });
-      return;
+    let cancelled = false;
+
+    async function syncUser() {
+      const { data, error } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (error || !data.user) {
+        navigate({ to: "/login", replace: true });
+        return;
+      }
+      setUserId(data.user.id);
+
+      // 拉取 display_name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const meta = (data.user.user_metadata ?? {}) as { display_name?: string; full_name?: string };
+      setDisplayName(
+        profile?.display_name ||
+          meta.display_name ||
+          meta.full_name ||
+          (data.user.email ? data.user.email.split("@")[0] : "当前用户"),
+      );
     }
-    setUserId(uid);
+
+    syncUser();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (cancelled) return;
+      if (event === "SIGNED_OUT") {
+        setUserId(null);
+        navigate({ to: "/login", replace: true });
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        syncUser();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, [navigate]);
 
-
-  // Hydrate mode + voice toggle from localStorage (post-mount to avoid SSR mismatch)
+  // 本地存储：模式 + 语音开关
   useEffect(() => {
     try {
       const saved = localStorage.getItem(MODE_KEY);
@@ -208,14 +233,12 @@ function Index() {
     try { localStorage.setItem(VOICE_KEY, v ? "on" : "off"); } catch {}
   }
 
-  // Alarms only fire for TODAY's real tasks, regardless of which date the user is browsing
   const { activeAlarm, dismiss: dismissAlarm } = useTaskAlarm({
     tasks: todayAlarmTasks,
     voiceEnabled: voiceAlarmOn,
   });
 
-
-  // Edge-swipe from left to open drawer
+  // Edge-swipe drawer
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     function onStart(e: TouchEvent) {
@@ -240,17 +263,13 @@ function Index() {
     };
   }, []);
 
-
-
-  // —— 数据加载：根据 selectedDate + userId 动态聚合「tasks 单次任务」+「routines 周期任务」 ——
+  // —— 数据加载：按 selectedDate + userId 聚合「单次任务 + 周期任务」——
   useEffect(() => {
     if (!userId) return;
     const uid: string = userId;
     let cancelled = false;
 
     async function loadDateView() {
-
-      // 23:00 Melting Log（只在加载今天时执行，避免来回切日期反复清理）
       if (selectedDate === today) {
         await supabase
           .from("tasks")
@@ -273,21 +292,6 @@ function Index() {
       const dateObj = isoToDate(selectedDate);
       const targetDow = isoDow(dateObj);
 
-      // Debug: 完全不按日期 / owner / flow_status 过滤，直接读取 tasks 原始数组
-      const { data: allTaskRows, error: allTaskError } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("created_at", { ascending: false });
-      console.log("[Dashboard][Debug] Current Mock User ID =", uid);
-      console.log("[Dashboard][Debug] Total Tasks Fetched =", allTaskRows?.length ?? 0);
-      console.log("[Dashboard][Debug] Raw Tasks Array（未过滤）=", allTaskRows, "error =", allTaskError);
-      if (!cancelled) {
-        setRawTaskRows((allTaskRows ?? []) as DbTask[]);
-        setRawTaskError(allTaskError ? allTaskError.message : null);
-      }
-
-      // 动作 A：tasks 表中日期严格等于 selectedDate 的所有任务（只看已确认）
-      console.log("[Dashboard] 当前看板认定的用户ID =", uid, "| selectedDate =", selectedDate);
       const { data: dayTaskRows } = await supabase
         .from("tasks")
         .select("*")
@@ -295,13 +299,12 @@ function Index() {
         .eq("flow_status", "accepted")
         .in("type", ["temporary", "routine", "milestone"])
         .eq("execution_date", selectedDate);
-      console.log("[Dashboard] 从数据库捞出的原始 tasks 行 =", dayTaskRows);
 
-      // 动作 B：routines 表全量周期任务，前端按 recurrence_days 过滤
       const { data: routineRows } = await supabase
         .from("routines")
         .select("id, time, title, note, recurrence_days")
-        .eq("user_id", uid)
+        .eq("owner_id", uid)
+        .eq("flow_status", "accepted")
         .eq("active", true);
 
       const matchingRoutines = (routineRows ?? []).filter((r) => {
@@ -310,7 +313,6 @@ function Index() {
         return days.includes(targetDow);
       });
 
-      // 如果是今天：保证常规任务已被持久化为今天的 tasks 行（便于勾选 ✓）
       if (selectedDate === today && matchingRoutines.length > 0) {
         const upsertRows = matchingRoutines.map((r) => ({
           type: "routine" as const,
@@ -328,7 +330,6 @@ function Index() {
           .from("tasks")
           .upsert(upsertRows, { onConflict: "routine_id,execution_date", ignoreDuplicates: true });
 
-        // 重新拉一次以拿到新 upsert 的 id
         const { data: refreshed } = await supabase
           .from("tasks")
           .select("*")
@@ -378,7 +379,6 @@ function Index() {
         setTodayAlarmTasks((todayRows ?? []).map(rowToTask));
       }
 
-      // Upcoming milestones (today and future) — independent of selectedDate
       const { data: msRows } = await supabase
         .from("tasks")
         .select("*")
@@ -390,7 +390,6 @@ function Index() {
       if (cancelled) return;
       setMilestones((msRows ?? []).map(rowToTask));
 
-      // —— 新要务待确认气泡：所有 owner=我 且 flow_status=pending 的协同任务 ——
       const { data: pendingRows } = await supabase
         .from("tasks")
         .select("*")
@@ -404,9 +403,7 @@ function Index() {
 
     loadDateView();
 
-
-
-    // Realtime — only mutate state for rows that match the date the user is currently viewing
+    // Realtime
     const channel = supabase
       .channel("tasks-rt")
       .on(
@@ -424,13 +421,11 @@ function Index() {
             return;
           }
           if (!newRow) return;
-          // 只关心 owner=当前用户 的行
           if (newRow.owner_id !== uid) return;
           const t = rowToTask(newRow);
           const isAccepted = newRow.flow_status === "accepted";
           const isPending = newRow.flow_status === "pending";
 
-          // —— Pending Inbox 同步 ——
           setPendingTasks((ps) => {
             const without = ps.filter((x) => x.id !== t.id);
             if (isPending) {
@@ -495,30 +490,22 @@ function Index() {
     [tasks],
   );
 
-
-
   const completed = tasks.filter((t) => t.done).length;
-
-  // (compact header — removed verbose today label)
-
 
   async function toggle(id: string) {
     const target = tasks.find((t) => t.id === id);
     if (!target) return;
     const nextDone = !target.done;
-    // optimistic
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, done: nextDone } : t)));
     if (isFamily && nextDone) {
       setThankShow(false);
       requestAnimationFrame(() => setThankShow(true));
     }
-    // 虚拟（未来日期未持久化的）routine 行不写库
     if (id.startsWith("vr-")) return;
     await supabase.from("tasks").update({ is_completed: nextDone }).eq("id", id);
   }
 
   async function handleDelete(id: string) {
-    // 🚀 乐观更新：立刻从所有本地列表移除，无需等后端
     setTasks((ts) => ts.filter((t) => t.id !== id));
     setTodayAlarmTasks((ts) => ts.filter((t) => t.id !== id));
     setMilestones((ms) => ms.filter((m) => m.id !== id));
@@ -533,7 +520,6 @@ function Index() {
     await supabase.from("tasks").delete().eq("id", id);
   }
 
-
   async function add(payload: {
     time: string;
     title: string;
@@ -543,10 +529,11 @@ function Index() {
     image_url?: string;
     owner_ids: string[];
   }) {
+    if (!userId) return;
     const { time, title, note, date, recurrence, image_url, owner_ids } = payload;
     const noteVal = note && note.trim() ? note.trim() : null;
-    const creatorId = userId ?? MOCK_USERS.me.id;
-    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid，保证写入与看板过滤完全对齐
+    const creatorId = userId;
+    // 归一化：把 me 槽位 sentinel 替换为真实 uid
     const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
     const targets = (owner_ids.length > 0 ? owner_ids : [creatorId]).map(normalize);
     const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -554,7 +541,6 @@ function Index() {
     const isFuture = iso > today;
 
     if (recurrence === "daily") {
-      // 周期任务：为每个 owner 各创建一条 routine
       for (const ownerId of targets) {
         const flow = ownerId === creatorId ? "accepted" : "pending";
         const { data: routine } = await supabase
@@ -612,8 +598,6 @@ function Index() {
     setReloadTick((n) => n + 1);
   }
 
-
-
   async function handleSync(instruction: string, attachmentUrl: string, ownerIds: string[]) {
     if (!isPro && aiInputsRemaining <= 0) {
       setPaywallOpen(true);
@@ -622,7 +606,6 @@ function Index() {
     setDrafts([]);
     setVerifyOpen(false);
 
-    // 🚀 智能分流网关 · 优先尝试本地快车道（0ms 解析，不消耗 AI 额度）
     const fastLane = tryLocalParse(instruction);
     if (fastLane && fastLane.length > 0) {
       const stamped = fastLane.map((d) => ({
@@ -635,21 +618,18 @@ function Index() {
       return;
     }
 
-    // 🤖 慢车道 · 落到 AI 解析
     setAiLoading(true);
     try {
       let parsed: DraftTask[];
       try {
-        // 图片附件不再当作链接喂给 AI，仅在发布时随任务一起存入 image_url
         parsed = await callDeepSeek(instruction, "");
       } catch (err: unknown) {
         console.error("DeepSeek API 报错原因:", err);
         setDrafts([]);
         setVerifyOpen(true);
-        const msg =
-          err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
         alert(
-          `🤖 DeepSeek 真 AI 调用失败：\n\n${msg}\n\n请检查：\n1. DEEPSEEK_API_KEY 是否在 Lovable Cloud Secrets 中正确配置\n2. 网络/CORS 是否被拦截\n3. 控制台查看完整堆栈`,
+          `🤖 DeepSeek 真 AI 调用失败：\n\n${msg}\n\n请检查：\n1. DEEPSEEK_API_KEY 是否在 Lovable Cloud Secrets 中正确配置\n2. 当前用户登录态是否有效\n3. 控制台查看完整堆栈`,
         );
         return;
       }
@@ -659,7 +639,6 @@ function Index() {
         alert("DeepSeek 返回了空数组，没识别出有效日程，换种说法再试一次～");
         return;
       }
-      // 将协同目标 + 上传截图 URL 附加到每条草稿
       const stamped = parsed.map((d) => ({
         ...d,
         image_url: attachmentUrl || d.image_url,
@@ -673,17 +652,15 @@ function Index() {
     }
   }
 
-
   async function publishDrafts(finalDrafts: DraftTask[]) {
+    if (!userId) return;
     const source = finalDrafts ?? drafts;
-    const creatorId = userId ?? MOCK_USERS.me.id;
-    // 🔑 归一化：mock "me" 槽位 → 真实登录 uid
+    const creatorId = userId;
     const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
 
-      // —— ① 单次任务：按协同目标"影子复制"成多条独立行 ——
       if (oneOffDrafts.length > 0) {
         const rows = oneOffDrafts.flatMap((d) => {
           const targets =
@@ -705,7 +682,6 @@ function Index() {
         await supabase.from("tasks").insert(rows);
       }
 
-      // —— ② 周期任务：每个 owner 一条 routine + 命中今日则注入 tasks ——
       if (recurringDrafts.length > 0) {
         const routineRows = recurringDrafts.flatMap((d) => {
           const targets =
@@ -779,6 +755,10 @@ function Index() {
     setReloadTick((n) => n + 1);
   }
 
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    // 跳转由 onAuthStateChange 接管
+  }
 
   return (
     <main className="relative mx-auto min-h-screen w-full max-w-md md:max-w-2xl bg-background md:shadow-[0_0_60px_-20px_rgba(34,34,34,0.12)]">
@@ -798,8 +778,6 @@ function Index() {
                 Pro
               </span>
             )}
-
-
           </div>
           <div className="flex items-center gap-2.5">
             <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -822,40 +800,30 @@ function Index() {
           </p>
         </div>
 
-        {/* 当前操作员挂牌 · 一键切换账户 */}
-        {(() => {
-          const me = getMockUserById(userId);
-          const displayLabel = me?.label ?? "当前用户";
-          return (
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-full border border-foreground/10 bg-card/70 px-2.5 py-1 shadow-[0_1px_2px_rgba(34,34,34,0.03)]">
-              <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className={cn(
-                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none",
-                    me?.avatarColor ?? "bg-foreground/10 text-foreground/70",
-                  )}
-                >
-                  {displayLabel.slice(-1)}
-                </span>
-                <span className="truncate text-[10.5px] tracking-wide text-foreground/65">
-                  当前操作员：<span className="font-medium text-foreground">{displayLabel}</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  logoutMock();
-                  navigate({ to: "/login", replace: true });
-                }}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
-                aria-label="切换账户"
-              >
-                <LogOut className="h-3 w-3" />
-                切换账户
-              </button>
-            </div>
-          );
-        })()}
+        {/* 当前操作员挂牌 · 真实 Supabase 用户 */}
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-full border border-foreground/10 bg-card/70 px-2.5 py-1 shadow-[0_1px_2px_rgba(34,34,34,0.03)]">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold leading-none",
+              )}
+            >
+              {displayName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="truncate text-[10.5px] tracking-wide text-foreground/65">
+              当前操作员：<span className="font-medium text-foreground">{displayName}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+            aria-label="退出登录"
+          >
+            <LogOut className="h-3 w-3" />
+            退出登录
+          </button>
+        </div>
       </header>
 
       {!isFamily && (
@@ -909,13 +877,9 @@ function Index() {
           }
         }}
         onOptimisticConflict={(pt) => {
-          // 冲突仅本地高亮标签即可，不需移出气泡
           setPendingTasks((ps) => ps.map((x) => (x.id === pt.id ? { ...x } : x)));
         }}
       />
-
-
-
 
       <section className="px-6 pb-40 pt-3">
         <div className="flex items-center gap-3 pb-1">
@@ -967,14 +931,12 @@ function Index() {
             : `共有 ${tasks.length} 项安排（含 ${routineCount} 项常驻常规）`}
         </p>
 
-
         <div>
           {sorted.map((t) => (
             <TaskItem key={t.id} task={t} onToggle={toggle} mode={mode} onDelete={handleDelete} />
           ))}
         </div>
       </section>
-
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-md md:max-w-2xl justify-center pb-8">
         <button
@@ -1014,13 +976,14 @@ function Index() {
         onVoiceAlarmChange={changeVoiceAlarm}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
-      {/* Edge-swipe hint strip (visual cue, also clickable) */}
       <button
         type="button"
         aria-label="从左边缘滑动打开菜单"
         onClick={() => setDrawerOpen(true)}
         className="fixed left-0 top-1/2 z-10 h-16 w-1 -translate-y-1/2 rounded-r-full bg-foreground/10 transition-all hover:w-1.5 hover:bg-foreground/25"
       />
+      {/* milestones state kept for future surface — referenced to satisfy strict TS unused-vars */}
+      <span className="hidden">{milestones.length}</span>
     </main>
   );
 }
