@@ -82,7 +82,13 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
 
   async function addRoutine() {
     if (!newTitle.trim()) return;
-    const { data } = await supabase
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (!uid) {
+      alert("登录态已失效，请重新登录");
+      return;
+    }
+    const { data, error } = await supabase
       .from("routines")
       .insert({
         time: newTime,
@@ -90,10 +96,18 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
         active: true,
         recurrence_type: "daily",
         recurrence_days: [1, 2, 3, 4, 5, 6, 7],
+        user_id: uid,
+        owner_id: uid,
+        creator_id: uid,
+        flow_status: "accepted",
       })
       .select("id, time, title, note, active, recurrence_type, recurrence_days")
       .single();
 
+    if (error) {
+      console.warn("addRoutine failed:", error);
+      return;
+    }
     if (data) {
       setRoutines((r) => [...r, data].sort((a, b) => a.time.localeCompare(b.time)));
       setNewTitle("");
