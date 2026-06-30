@@ -1,12 +1,13 @@
-// 高保真"多员协同"模拟账号底座 · 实名化
-// 三个对等的职场用户，硬编码 UUID 便于跨设备/跨会话稳定识别
+// Demo 同事数据（仅用于 OwnerSelector 演示协同指派的视觉效果）
+// 真实「当前用户」由 Supabase Auth 注入；下方的 me 槽位仅作占位符，
+// OwnerSelector / AIComposer / AddTaskSheet 会在运行时把 me.id 替换成真实 auth.uid()。
 
 export type MockUserKey = "me" | "a" | "b";
 
 export interface MockUser {
   key: MockUserKey;
   id: string;
-  label: string;       // 人类可读姓名
+  label: string;
   handle: string;
   avatarColor: string;
 }
@@ -14,22 +15,22 @@ export interface MockUser {
 export const MOCK_USERS: Record<MockUserKey, MockUser> = {
   me: {
     key: "me",
-    id: "11111111-1111-4111-8111-111111111111",
-    label: "王羽佳",
-    handle: "@wangyujia",
+    id: "11111111-1111-4111-8111-111111111111", // sentinel — 运行时替换为真实 auth.uid()
+    label: "我",
+    handle: "@me",
     avatarColor: "bg-primary/15 text-primary",
   },
   a: {
     key: "a",
     id: "22222222-2222-4222-8222-222222222222",
-    label: "同事 A",
+    label: "Demo · 同事 A",
     handle: "@colleague_a",
     avatarColor: "bg-amber-100 text-amber-700",
   },
   b: {
     key: "b",
     id: "33333333-3333-4333-8333-333333333333",
-    label: "同事 B",
+    label: "Demo · 同事 B",
     handle: "@colleague_b",
     avatarColor: "bg-sky-100 text-sky-700",
   },
@@ -42,11 +43,12 @@ export function getMockUserById(id: string | null | undefined): MockUser | null 
   return MOCK_USER_LIST.find((u) => u.id === id) ?? null;
 }
 
+/** 仅用于判断 OwnerSelector 中是否命中 demo 槽位（a/b）。真实用户 uid 永远返回 false。 */
 export function isFixedMockId(id: string | null | undefined): boolean {
   if (!id) return false;
-  return MOCK_USER_LIST.some((u) => u.id === id);
+  return id === MOCK_USERS.a.id || id === MOCK_USERS.b.id;
 }
 
 export function getMockUserLabel(id: string | null | undefined): string {
-  return getMockUserById(id)?.label ?? "未知用户";
+  return getMockUserById(id)?.label ?? "同事";
 }

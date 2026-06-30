@@ -89,7 +89,7 @@ async function callDeepSeek(instruction: string, pastedLink: string): Promise<Dr
 
 
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
