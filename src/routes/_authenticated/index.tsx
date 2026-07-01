@@ -1029,13 +1029,15 @@ function Index() {
       <SideDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        mode={mode}
-        onModeChange={changeMode}
-        isPro={isPro}
-        onTogglePro={setIsPro}
-        onRequestPaywall={() => setPaywallOpen(true)}
-        voiceAlarmOn={voiceAlarmOn}
-        onVoiceAlarmChange={changeVoiceAlarm}
+        displayName={displayName}
+        email={userEmail}
+        phone={userPhone}
+        teamContacts={teamContacts}
+        onOpenTeamManager={() => {
+          setDrawerOpen(false);
+          setTeamOpen(true);
+        }}
+        onSignOut={handleSignOut}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
       <button
