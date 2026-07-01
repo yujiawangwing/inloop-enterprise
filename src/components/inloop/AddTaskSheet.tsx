@@ -91,7 +91,7 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId, contact
     setDate(new Date());
     setRecurrence("none");
     setImageUrl(null);
-    setOwnerIds([currentUserId ?? MOCK_USERS.me.id]);
+    setOwnerIds([meId]);
     onOpenChange(false);
   }
 
