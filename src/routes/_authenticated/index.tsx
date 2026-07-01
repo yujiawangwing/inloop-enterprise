@@ -539,7 +539,7 @@ function Index() {
     const noteVal = note && note.trim() ? note.trim() : null;
     const creatorId = userId;
     // 归一化：把 me 槽位 sentinel 替换为真实 uid
-    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const normalize = (id: string) => (id === ME_SENTINEL_ID ? creatorId : id);
     const targets = (owner_ids.length > 0 ? owner_ids : [creatorId]).map(normalize);
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -616,7 +616,7 @@ function Index() {
       const stamped = fastLane.map((d) => ({
         ...d,
         image_url: attachmentUrl || d.image_url,
-        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+        owner_ids: ownerIds.length > 0 ? ownerIds : [ME_SENTINEL_ID],
       }));
       setDrafts(stamped);
       setVerifyOpen(true);
@@ -647,7 +647,7 @@ function Index() {
       const stamped = parsed.map((d) => ({
         ...d,
         image_url: attachmentUrl || d.image_url,
-        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+        owner_ids: ownerIds.length > 0 ? ownerIds : [ME_SENTINEL_ID],
       }));
       setDrafts(stamped);
       setVerifyOpen(true);
@@ -661,7 +661,7 @@ function Index() {
     if (!userId) return;
     const source = finalDrafts ?? drafts;
     const creatorId = userId;
-    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const normalize = (id: string) => (id === ME_SENTINEL_ID ? creatorId : id);
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
