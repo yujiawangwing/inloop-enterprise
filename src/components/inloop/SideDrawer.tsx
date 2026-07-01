@@ -1,20 +1,19 @@
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Repeat, Smartphone, Users, ClipboardList, Copy, Check, Volume2, VolumeX } from "lucide-react";
+import { Repeat, LogOut, UserPlus, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Mode } from "./ModeSwitch";
 import { supabase } from "@/integrations/supabase/client";
+import { contactAvatarClass, contactInitial, type Contact } from "@/lib/contacts";
 
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  mode: Mode;
-  onModeChange: (m: Mode) => void;
-  isPro?: boolean;
-  onTogglePro?: (v: boolean) => void;
-  onRequestPaywall?: () => void;
-  voiceAlarmOn?: boolean;
-  onVoiceAlarmChange?: (v: boolean) => void;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+  teamContacts: Contact[];
+  onOpenTeamManager: () => void;
+  onSignOut: () => void | Promise<void>;
 }
 
 interface Routine {
@@ -37,48 +36,29 @@ function formatRecurrence(r: Pick<Routine, "recurrence_type" | "recurrence_days"
   return "每天";
 }
 
-
-const SYNC_CODE = "IL-8839";
-const DEVICES = [
-  { name: "控制台 · iPhone 15 Pro", role: "planner" },
-  { name: "桌面 iPad · 核心日程看板", role: "family" },
-];
-
-export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = false, onTogglePro, onRequestPaywall, voiceAlarmOn = true, onVoiceAlarmChange }: Props) {
+export function SideDrawer({
+  open,
+  onOpenChange,
+  displayName,
+  email,
+  phone,
+  teamContacts,
+  onOpenTeamManager,
+  onSignOut,
+}: Props) {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [showRoutines, setShowRoutines] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [newTime, setNewTime] = useState("08:00");
   const [newTitle, setNewTitle] = useState("");
-  const [dbStatus, setDbStatus] = useState<"checking" | "online" | "offline">("checking");
 
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const hasEnv = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        if (!hasEnv) {
-          if (!cancelled) setDbStatus("offline");
-          return;
-        }
-        const { error } = await supabase.from("routines").select("id").limit(1);
-        if (!cancelled) setDbStatus(error ? "offline" : "online");
-      } catch {
-        if (!cancelled) setDbStatus("offline");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || mode !== "planner") return;
     supabase
       .from("routines")
       .select("id, time, title, note, active, recurrence_type, recurrence_days")
       .order("time", { ascending: true })
       .then(({ data }) => setRoutines(data ?? []));
-  }, [open, mode, showRoutines]);
+  }, [open, showRoutines]);
 
   async function addRoutine() {
     if (!newTitle.trim()) return;
@@ -119,11 +99,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
     setRoutines((r) => r.filter((x) => x.id !== id));
   }
 
-  function copy() {
-    navigator.clipboard?.writeText(SYNC_CODE);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  }
+  const contact = email || phone || "未绑定联系方式";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -136,12 +112,12 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
             Inloop
           </SheetTitle>
           <SheetDescription className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            设备菜单 · MENU
+            个人 · 团队设置中心
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex h-[calc(100vh-110px)] flex-col overflow-y-auto px-6 py-6">
-          {showRoutines && mode === "planner" ? (
+          {showRoutines ? (
             <div>
               <button
                 onClick={() => setShowRoutines(false)}
@@ -187,7 +163,6 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                       移除
                     </button>
                   </div>
-
                 ))}
               </div>
 
@@ -206,7 +181,7 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
                     type="text"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="例：补维 D"
+                    placeholder="例：晨会同步"
                     className="min-w-0 flex-1 rounded-md border border-foreground/15 bg-background px-2.5 py-1.5 text-[12.5px] text-foreground placeholder:text-foreground/35 focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -221,237 +196,126 @@ export function SideDrawer({ open, onOpenChange, mode, onModeChange, isPro = fal
             </div>
           ) : (
             <>
-              {/* Mode selector */}
+              {/* 个人中心 */}
               <section>
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  设备模式
+                  个人中心
                 </h3>
-                <div className="mt-3 space-y-2">
-                  {[
-                    { v: "planner" as const, label: "控制台模式", desc: "发布端：编排日程、AI 智能输入", Icon: Smartphone },
-                    { v: "family" as const, label: "看板模式", desc: "远视聚焦：放大核心时间块与截图缩略", Icon: Users },
-                  ].map(({ v, label, desc, Icon }) => {
-                    const active = mode === v;
-                    return (
-                      <button
-                        key={v}
-                        onClick={() => onModeChange(v)}
-                        className={cn(
-                          "flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all",
-                          active
-                            ? "border-primary/60 bg-primary/[0.06]"
-                            : "border-foreground/10 bg-card hover:border-foreground/25",
-                        )}
+                <div className="mt-3 rounded-2xl border border-foreground/10 bg-gradient-to-br from-primary/[0.06] via-card to-card p-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={cn(
+                        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold",
+                        contactAvatarClass(displayName),
+                      )}
+                    >
+                      {contactInitial(displayName)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14.5px] font-semibold tracking-tight text-foreground">
+                        {displayName}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11.5px] leading-snug text-muted-foreground">
+                        {contact}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSignOut()}
+                    className="mt-3.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-foreground/12 bg-background/70 py-2 text-[12px] font-medium tracking-wide text-foreground/75 transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-600 active:scale-[0.98]"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    退出登录
+                  </button>
+                </div>
+              </section>
+
+              {/* 团队管理 */}
+              <section className="mt-7">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
+                    我的团队 · {teamContacts.length}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={onOpenTeamManager}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary transition-all hover:bg-primary/15 active:scale-95"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    添加成员
+                  </button>
+                </div>
+
+                <div className="mt-3 space-y-1.5">
+                  {teamContacts.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={onOpenTeamManager}
+                      className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-foreground/15 bg-card/40 px-3.5 py-4 text-left transition-all hover:border-primary/40 hover:bg-primary/[0.04]"
+                    >
+                      <Users className="h-4 w-4 shrink-0 text-foreground/40" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[12.5px] font-medium text-foreground">
+                          还没有团队成员
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                          通过对方的邮箱 / 手机号添加，即可协同派发日程
+                        </span>
+                      </span>
+                    </button>
+                  ) : (
+                    teamContacts.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-3 rounded-xl border border-foreground/8 bg-card px-3 py-2.5"
                       >
                         <span
                           className={cn(
-                            "mt-1 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border",
-                            active ? "border-primary" : "border-foreground/30",
+                            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold",
+                            contactAvatarClass(c.id),
                           )}
                         >
-                          {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                          {contactInitial(c.display_name)}
                         </span>
-                        <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/70" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13.5px] font-medium tracking-tight text-foreground">
-                            {label}
-                          </p>
-                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                            {desc}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+                          {c.display_name}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
 
-              {/* Voice alarm toggle */}
+              {/* 常规任务库 */}
               <section className="mt-7">
                 <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  到点语音强提醒
+                  规划管理
                 </h3>
                 <button
-                  type="button"
-                  onClick={() => onVoiceAlarmChange?.(!voiceAlarmOn)}
-                  className={cn(
-                    "mt-3 flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3.5 text-left transition-all",
-                    voiceAlarmOn
-                      ? "border-amber-500/40 bg-amber-50/60 hover:border-amber-500/60"
-                      : "border-foreground/10 bg-card hover:border-foreground/25",
-                  )}
-                  aria-pressed={voiceAlarmOn}
+                  onClick={() => setShowRoutines(true)}
+                  className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-foreground/10 bg-card px-3.5 py-3.5 transition-all hover:border-foreground/25"
                 >
-                  <span className="flex min-w-0 flex-1 items-center gap-2.5">
-                    {voiceAlarmOn ? (
-                      <Volume2 className="h-4 w-4 shrink-0 text-amber-600" />
-                    ) : (
-                      <VolumeX className="h-4 w-4 shrink-0 text-foreground/45" />
-                    )}
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-medium tracking-tight text-foreground">
-                        {voiceAlarmOn ? "🔊 到点语音强提醒已开启" : "🔇 静默通知模式"}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
-                        {voiceAlarmOn
-                          ? "到点自动语音播报 + 全屏唤醒查看端"
-                          : "仅弹窗显示，不出声不打扰"}
-                      </span>
+                  <span className="flex items-center gap-2.5">
+                    <Repeat className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-[13.5px] font-medium tracking-tight text-foreground">
+                      常规任务库
                     </span>
                   </span>
-                  <span
-                    className={cn(
-                      "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-                      voiceAlarmOn ? "bg-amber-500" : "bg-foreground/20",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                        voiceAlarmOn ? "translate-x-[18px]" : "translate-x-[2px]",
-                      )}
-                    />
-                  </span>
+                  <span className="text-[16px] text-foreground/40">›</span>
                 </button>
               </section>
 
-              {/* Routines (planner only) */}
-              {mode === "planner" && (
-                <section className="mt-7">
-                  <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                    规划管理
-                  </h3>
-                  <button
-                    onClick={() => setShowRoutines(true)}
-                    className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-foreground/10 bg-card px-3.5 py-3.5 transition-all hover:border-foreground/25"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <Repeat className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-[13.5px] font-medium tracking-tight text-foreground">
-                        常规任务库
-                      </span>
-                    </span>
-                    <span className="text-[16px] text-foreground/40">›</span>
-                  </button>
-                </section>
-              )}
-
-              {/* Sync code */}
-              <section className="mt-7">
-                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-foreground/55">
-                  多端联动同步
-                </h3>
-                <div className="mt-3 rounded-xl border border-foreground/10 bg-card p-4">
-                  <p className="text-[10.5px] tracking-[0.14em] text-muted-foreground">
-                    空间同步码
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="font-mono text-[22px] font-semibold tracking-[0.18em] text-foreground">
-                      {SYNC_CODE}
-                    </span>
-                    <button
-                      onClick={copy}
-                      className="ml-auto inline-flex items-center gap-1 rounded-full border border-foreground/15 px-2.5 py-1 text-[10.5px] tracking-wide text-foreground/70 transition-all hover:bg-foreground/5"
-                    >
-                      {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
-                      {copied ? "已复制" : "复制"}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                    查看端打开 Inloop 输入此码，即可一键接入此工作空间。
-                  </p>
-
-                  <div className="mt-4 space-y-1.5 border-t border-foreground/8 pt-3">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-foreground/55">
-                      已连接设备
-                    </p>
-                    {DEVICES.map((d) => (
-                      <div key={d.name} className="flex items-center gap-2 py-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                        <span className="text-[12px] text-foreground/80">{d.name}</span>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Simulated 3rd device bind attempt
-                        if (!isPro) {
-                          onRequestPaywall?.();
-                        }
-                      }}
-                      className="mt-2 w-full rounded-full border border-dashed border-foreground/20 py-1.5 text-[11px] tracking-wide text-foreground/55 transition-all hover:border-foreground/35 hover:text-foreground/80"
-                    >
-                      + 绑定新设备
-                    </button>
-                    {!isPro && (
-                      <p className="pt-1 text-[10px] leading-snug text-foreground/40">
-                        免费版最多支持绑定 2 台设备
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* DB status indicator */}
-              <div className="mt-6 flex items-center justify-center gap-1.5 text-[10px] tracking-wide text-foreground/45">
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    dbStatus === "online"
-                      ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]"
-                      : dbStatus === "offline"
-                      ? "bg-red-500"
-                      : "bg-foreground/30 animate-pulse",
-                  )}
-                />
-                <span>
-                  数据库状态：
-                  {dbStatus === "online"
-                    ? "已连接云端同步"
-                    : dbStatus === "offline"
-                    ? "本地离线模式"
-                    : "检测中…"}
-                </span>
-              </div>
-
-              {/* Dev test toggle */}
-              <div className="mt-3 rounded-lg border border-dashed border-foreground/12 px-3 py-2.5">
-                <p className="text-[9.5px] font-medium uppercase tracking-[0.18em] text-foreground/40">
-                  Dev · 测试切换
-                </p>
-                <div className="mt-1.5 flex items-center gap-2 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => onTogglePro?.(true)}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 transition-all",
-                      isPro ? "bg-primary/15 text-primary" : "text-foreground/55 hover:text-foreground",
-                    )}
-                  >
-                    模拟 Pro 身份
-                  </button>
-                  <span className="text-foreground/25">/</span>
-                  <button
-                    type="button"
-                    onClick={() => onTogglePro?.(false)}
-                    className={cn(
-                      "rounded-full px-2 py-0.5 transition-all",
-                      !isPro ? "bg-foreground/10 text-foreground" : "text-foreground/55 hover:text-foreground",
-                    )}
-                  >
-                    模拟免费身份
-                  </button>
-                </div>
-              </div>
-
               <div className="mt-auto pt-8">
                 <p className="text-center text-[9.5px] tracking-[0.22em] text-muted-foreground">
-                  INLOOP ENTERPRISE {isPro && "· PRO"}
+                  INLOOP ENTERPRISE
                 </p>
               </div>
             </>
           )}
         </div>
+        {/* keep icon import balance for tree-shaking safety */}
+        <span className="hidden"><X className="h-0 w-0" /></span>
       </SheetContent>
     </Sheet>
   );

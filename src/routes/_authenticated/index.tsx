@@ -145,6 +145,8 @@ function Index() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("当前用户");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userPhone, setUserPhone] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
@@ -183,6 +185,8 @@ function Index() {
         return;
       }
       setUserId(data.user.id);
+      setUserEmail(data.user.email ?? null);
+      setUserPhone(data.user.phone ?? null);
 
       // 拉取 display_name
       const { data: profile } = await supabase
@@ -1025,13 +1029,15 @@ function Index() {
       <SideDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        mode={mode}
-        onModeChange={changeMode}
-        isPro={isPro}
-        onTogglePro={setIsPro}
-        onRequestPaywall={() => setPaywallOpen(true)}
-        voiceAlarmOn={voiceAlarmOn}
-        onVoiceAlarmChange={changeVoiceAlarm}
+        displayName={displayName}
+        email={userEmail}
+        phone={userPhone}
+        teamContacts={teamContacts}
+        onOpenTeamManager={() => {
+          setDrawerOpen(false);
+          setTeamOpen(true);
+        }}
+        onSignOut={handleSignOut}
       />
       <WakeAlarmOverlay task={activeAlarm} onDismiss={dismissAlarm} />
       <button
