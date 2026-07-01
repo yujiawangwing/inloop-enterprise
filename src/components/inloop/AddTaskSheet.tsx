@@ -273,7 +273,9 @@ export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId, contact
             <OwnerSelector
               value={ownerIds}
               onChange={setOwnerIds}
-              currentUserId={currentUserId}
+              contacts={contacts}
+              meId={meId}
+              onManage={onManageTeam}
             />
           </div>
 
