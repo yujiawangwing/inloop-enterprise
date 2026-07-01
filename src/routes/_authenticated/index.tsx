@@ -145,6 +145,8 @@ function Index() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("当前用户");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userPhone, setUserPhone] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [todayAlarmTasks, setTodayAlarmTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Task[]>([]);
