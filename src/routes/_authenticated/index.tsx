@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Menu, Calendar as CalendarIcon, LogOut } from "lucide-react";
+import { Plus, Menu, Calendar as CalendarIcon, LogOut, Users } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
 import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
 import type { Mode } from "@/components/inloop/ModeSwitch";
@@ -10,9 +10,10 @@ import { VerificationModal } from "@/components/inloop/VerificationModal";
 import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
+import { TeamManager } from "@/components/inloop/TeamManager";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
-import { MOCK_USERS } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, primeContacts, useContacts } from "@/lib/contacts";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -163,8 +164,12 @@ function Index() {
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [teamOpen, setTeamOpen] = useState(false);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
+
+  // 团队成员（真实 user_connections）
+  const { others: teamContacts, all: allContacts, reload: reloadContacts } = useContacts(userId, displayName);
 
   // —— Supabase Auth · 真实会话守卫（_authenticated 子树已统一兜底，这里仅同步本地状态）——
   useEffect(() => {
@@ -480,6 +485,25 @@ function Index() {
     };
   }, [selectedDate, today, userId, reloadTick]);
 
+  // 为看板 / 收件箱中出现的 creator/owner 补齐 profile 名称（可能是不在通讯录里的用户）
+  useEffect(() => {
+    if (!userId) return;
+    const knownIds = new Set<string>([userId, ...teamContacts.map((c) => c.id)]);
+    const needed = new Set<string>();
+    for (const t of [...tasks, ...pendingTasks, ...milestones]) {
+      if (t.creator_id && !knownIds.has(t.creator_id)) needed.add(t.creator_id);
+      if (t.owner_id && !knownIds.has(t.owner_id)) needed.add(t.owner_id);
+    }
+    if (needed.size === 0) return;
+    supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", Array.from(needed))
+      .then(({ data }) => {
+        if (data && data.length > 0) primeContacts(data);
+      });
+  }, [tasks, pendingTasks, milestones, teamContacts, userId]);
+
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
     [tasks],
@@ -534,7 +558,7 @@ function Index() {
     const noteVal = note && note.trim() ? note.trim() : null;
     const creatorId = userId;
     // 归一化：把 me 槽位 sentinel 替换为真实 uid
-    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const normalize = (id: string) => (id === ME_SENTINEL_ID ? creatorId : id);
     const targets = (owner_ids.length > 0 ? owner_ids : [creatorId]).map(normalize);
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const iso = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -611,7 +635,7 @@ function Index() {
       const stamped = fastLane.map((d) => ({
         ...d,
         image_url: attachmentUrl || d.image_url,
-        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+        owner_ids: ownerIds.length > 0 ? ownerIds : [ME_SENTINEL_ID],
       }));
       setDrafts(stamped);
       setVerifyOpen(true);
@@ -642,7 +666,7 @@ function Index() {
       const stamped = parsed.map((d) => ({
         ...d,
         image_url: attachmentUrl || d.image_url,
-        owner_ids: ownerIds.length > 0 ? ownerIds : [MOCK_USERS.me.id],
+        owner_ids: ownerIds.length > 0 ? ownerIds : [ME_SENTINEL_ID],
       }));
       setDrafts(stamped);
       setVerifyOpen(true);
@@ -656,7 +680,7 @@ function Index() {
     if (!userId) return;
     const source = finalDrafts ?? drafts;
     const creatorId = userId;
-    const normalize = (id: string) => (id === MOCK_USERS.me.id ? creatorId : id);
+    const normalize = (id: string) => (id === ME_SENTINEL_ID ? creatorId : id);
     if (source.length > 0) {
       const recurringDrafts = source.filter((d) => d.is_recurring);
       const oneOffDrafts = source.filter((d) => !d.is_recurring);
@@ -814,21 +838,39 @@ function Index() {
               当前操作员：<span className="font-medium text-foreground">{displayName}</span>
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
-            aria-label="退出登录"
-          >
-            <LogOut className="h-3 w-3" />
-            退出登录
-          </button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setTeamOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/60 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+              aria-label="团队成员管理"
+            >
+              <Users className="h-3 w-3" />
+              团队{teamContacts.length > 0 && <span className="text-foreground/45">·{teamContacts.length}</span>}
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+              aria-label="退出登录"
+            >
+              <LogOut className="h-3 w-3" />
+              退出
+            </button>
+          </div>
         </div>
       </header>
 
       {!isFamily && (
         <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} currentUserId={userId} />
+          <AIComposer
+            onSync={handleSync}
+            remaining={isPro ? null : aiInputsRemaining}
+            loading={aiLoading}
+            currentUserId={userId}
+            contacts={allContacts}
+            onManageTeam={() => setTeamOpen(true)}
+          />
         </section>
       )}
 
@@ -954,13 +996,29 @@ function Index() {
         </button>
       </div>
 
-      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} currentUserId={userId} />
+      <AddTaskSheet
+        open={open}
+        onOpenChange={setOpen}
+        onAdd={add}
+        currentUserId={userId}
+        contacts={allContacts}
+        onManageTeam={() => setTeamOpen(true)}
+      />
       <VerificationModal
         open={verifyOpen}
         drafts={drafts}
         onCancel={() => setVerifyOpen(false)}
         onConfirm={publishDrafts}
         currentUserId={userId}
+        contacts={allContacts}
+        onManageTeam={() => setTeamOpen(true)}
+      />
+      <TeamManager
+        open={teamOpen}
+        onOpenChange={setTeamOpen}
+        currentUserId={userId}
+        connections={teamContacts}
+        onChanged={reloadContacts}
       />
       <ThankYouToast show={thankShow} onDone={() => setThankShow(false)} />
       <PaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />

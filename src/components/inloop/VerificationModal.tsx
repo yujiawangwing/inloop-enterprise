@@ -5,7 +5,7 @@ import type { DraftTask } from "@/lib/parseDraft";
 import { ImageUploader } from "./ImageUploader";
 import { ImageLightbox } from "./ImageLightbox";
 import { OwnerSelector } from "./OwnerSelector";
-import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, contactAvatarClass, getContactLabel, type Contact } from "@/lib/contacts";
 
 interface Props {
   open: boolean;
@@ -13,9 +13,12 @@ interface Props {
   onCancel: () => void;
   onConfirm: (finalDrafts: DraftTask[]) => void;
   currentUserId?: string | null;
+  contacts: Contact[];
+  onManageTeam?: () => void;
 }
 
-export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId }: Props) {
+export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId, contacts, onManageTeam }: Props) {
+  const meId = currentUserId ?? ME_SENTINEL_ID;
   const [isEditing, setIsEditing] = useState(false);
   const [editable, setEditable] = useState<DraftTask[]>(drafts);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -132,9 +135,11 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
                 />
                 <div className="mt-1.5">
                   <OwnerSelector
-                    value={d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [MOCK_USERS.me.id]}
+                    value={d.owner_ids && d.owner_ids.length > 0 ? d.owner_ids : [meId]}
                     onChange={(ids) => updateField(i, "owner_ids", ids)}
-                    currentUserId={currentUserId}
+                    contacts={contacts}
+                    meId={meId}
+                    onManage={onManageTeam}
                     size="sm"
                   />
                 </div>
@@ -189,15 +194,14 @@ export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUs
                       指派
                     </span>
                     {d.owner_ids.map((oid) => {
-                      const u = getMockUserById(oid);
-                      if (!u) return null;
-                      const isMe = oid === currentUserId;
+                      const isMe = oid === currentUserId || oid === ME_SENTINEL_ID;
+                      const label = isMe ? "我本人" : getContactLabel(oid);
                       return (
                         <span
                           key={oid}
-                          className={`inline-flex items-center rounded-full px-1.5 py-[1px] text-[10px] font-medium leading-none ${u.avatarColor} ${isMe ? "ring-1 ring-primary/30" : ""}`}
+                          className={`inline-flex items-center rounded-full px-1.5 py-[1px] text-[10px] font-medium leading-none ${contactAvatarClass(oid)} ${isMe ? "ring-1 ring-primary/30" : ""}`}
                         >
-                          {isMe ? "我本人" : u.label}
+                          {label}
                           {!isMe && (
                             <span className="ml-1 text-[8.5px] font-semibold tracking-wider opacity-70">
                               · 待确认
