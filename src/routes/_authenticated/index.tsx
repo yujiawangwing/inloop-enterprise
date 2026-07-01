@@ -185,6 +185,8 @@ function Index() {
         return;
       }
       setUserId(data.user.id);
+      setUserEmail(data.user.email ?? null);
+      setUserPhone(data.user.phone ?? null);
 
       // 拉取 display_name
       const { data: profile } = await supabase
