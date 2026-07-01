@@ -485,6 +485,25 @@ function Index() {
     };
   }, [selectedDate, today, userId, reloadTick]);
 
+  // 为看板 / 收件箱中出现的 creator/owner 补齐 profile 名称（可能是不在通讯录里的用户）
+  useEffect(() => {
+    if (!userId) return;
+    const knownIds = new Set<string>([userId, ...teamContacts.map((c) => c.id)]);
+    const needed = new Set<string>();
+    for (const t of [...tasks, ...pendingTasks, ...milestones]) {
+      if (t.creator_id && !knownIds.has(t.creator_id)) needed.add(t.creator_id);
+      if (t.owner_id && !knownIds.has(t.owner_id)) needed.add(t.owner_id);
+    }
+    if (needed.size === 0) return;
+    supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", Array.from(needed))
+      .then(({ data }) => {
+        if (data && data.length > 0) primeContacts(data);
+      });
+  }, [tasks, pendingTasks, milestones, teamContacts, userId]);
+
   const sorted = useMemo(
     () => [...tasks].sort((a, b) => a.time.localeCompare(b.time)),
     [tasks],
