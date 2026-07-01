@@ -5,7 +5,7 @@ import type { DraftTask } from "@/lib/parseDraft";
 import { ImageUploader } from "./ImageUploader";
 import { ImageLightbox } from "./ImageLightbox";
 import { OwnerSelector } from "./OwnerSelector";
-import { MOCK_USERS, getMockUserById } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, contactAvatarClass, getContactLabel, type Contact } from "@/lib/contacts";
 
 interface Props {
   open: boolean;
@@ -13,9 +13,12 @@ interface Props {
   onCancel: () => void;
   onConfirm: (finalDrafts: DraftTask[]) => void;
   currentUserId?: string | null;
+  contacts: Contact[];
+  onManageTeam?: () => void;
 }
 
-export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId }: Props) {
+export function VerificationModal({ open, drafts, onCancel, onConfirm, currentUserId, contacts, onManageTeam }: Props) {
+  const meId = currentUserId ?? ME_SENTINEL_ID;
   const [isEditing, setIsEditing] = useState(false);
   const [editable, setEditable] = useState<DraftTask[]>(drafts);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
