@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Menu, Calendar as CalendarIcon, LogOut } from "lucide-react";
+import { Plus, Menu, Calendar as CalendarIcon, LogOut, Users } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
 import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
 import type { Mode } from "@/components/inloop/ModeSwitch";
@@ -10,9 +10,10 @@ import { VerificationModal } from "@/components/inloop/VerificationModal";
 import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
+import { TeamManager } from "@/components/inloop/TeamManager";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
-import { MOCK_USERS } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, primeContacts, useContacts } from "@/lib/contacts";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -163,8 +164,12 @@ function Index() {
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
+  const [teamOpen, setTeamOpen] = useState(false);
   const isFamily = mode === "family";
   const isToday = selectedDate === today;
+
+  // 团队成员（真实 user_connections）
+  const { others: teamContacts, all: allContacts, reload: reloadContacts } = useContacts(userId, displayName);
 
   // —— Supabase Auth · 真实会话守卫（_authenticated 子树已统一兜底，这里仅同步本地状态）——
   useEffect(() => {
