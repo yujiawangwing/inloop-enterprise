@@ -819,15 +819,26 @@ function Index() {
               当前操作员：<span className="font-medium text-foreground">{displayName}</span>
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
-            aria-label="退出登录"
-          >
-            <LogOut className="h-3 w-3" />
-            退出登录
-          </button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setTeamOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/60 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+              aria-label="团队成员管理"
+            >
+              <Users className="h-3 w-3" />
+              团队{teamContacts.length > 0 && <span className="text-foreground/45">·{teamContacts.length}</span>}
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground/55 transition-colors hover:bg-foreground/[0.05] hover:text-foreground"
+              aria-label="退出登录"
+            >
+              <LogOut className="h-3 w-3" />
+              退出
+            </button>
+          </div>
         </div>
       </header>
 
