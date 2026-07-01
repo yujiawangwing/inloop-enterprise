@@ -833,7 +833,14 @@ function Index() {
 
       {!isFamily && (
         <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer onSync={handleSync} remaining={isPro ? null : aiInputsRemaining} loading={aiLoading} currentUserId={userId} />
+          <AIComposer
+            onSync={handleSync}
+            remaining={isPro ? null : aiInputsRemaining}
+            loading={aiLoading}
+            currentUserId={userId}
+            contacts={allContacts}
+            onManageTeam={() => setTeamOpen(true)}
+          />
         </section>
       )}
 
@@ -959,13 +966,29 @@ function Index() {
         </button>
       </div>
 
-      <AddTaskSheet open={open} onOpenChange={setOpen} onAdd={add} currentUserId={userId} />
+      <AddTaskSheet
+        open={open}
+        onOpenChange={setOpen}
+        onAdd={add}
+        currentUserId={userId}
+        contacts={allContacts}
+        onManageTeam={() => setTeamOpen(true)}
+      />
       <VerificationModal
         open={verifyOpen}
         drafts={drafts}
         onCancel={() => setVerifyOpen(false)}
         onConfirm={publishDrafts}
         currentUserId={userId}
+        contacts={allContacts}
+        onManageTeam={() => setTeamOpen(true)}
+      />
+      <TeamManager
+        open={teamOpen}
+        onOpenChange={setTeamOpen}
+        currentUserId={userId}
+        connections={teamContacts}
+        onChanged={reloadContacts}
       />
       <ThankYouToast show={thankShow} onDone={() => setThankShow(false)} />
       <PaywallModal open={paywallOpen} onOpenChange={setPaywallOpen} />
