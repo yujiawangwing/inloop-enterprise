@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Inbox, ChevronDown, Check, AlarmClockOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { getMockUserById, MOCK_USERS } from "@/lib/mockUsers";
+import { getContactLabel } from "@/lib/contacts";
 import { ImageLightbox } from "./ImageLightbox";
 
 export interface PendingTask {
@@ -108,8 +108,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
       {open && (
         <ul className="divide-y divide-amber-200/60 border-t border-amber-200/60 bg-white/55">
           {tasks.map((t) => {
-            const creator = getMockUserById(t.creator_id);
-            const creatorLabel = creator?.label ?? "同事";
+            const creatorLabel = getContactLabel(t.creator_id);
             const isMine = t.creator_id === t.owner_id;
             const dateInfo = formatExecDate(t.execution_date);
             return (
@@ -196,7 +195,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
       {!open && (
         <div className="flex items-center justify-end gap-1.5 border-t border-amber-200/60 bg-white/40 px-4 py-1.5">
           <span className="text-[10px] text-amber-800/60">
-            点击展开 · 当前账号 {getMockUserById(tasks[0]?.owner_id)?.label ?? MOCK_USERS.me.label}
+            点击展开 · 当前账号 {getContactLabel(tasks[0]?.owner_id, "我")}
           </span>
         </div>
       )}

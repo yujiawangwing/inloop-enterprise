@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useEffect, useState } from "react";
 import { ImageLightbox } from "./ImageLightbox";
 import { supabase } from "@/integrations/supabase/client";
-import { getMockUserById } from "@/lib/mockUsers";
+import { getContactLabel } from "@/lib/contacts";
 
 export type TaskType = "temporary" | "routine" | "milestone";
 
@@ -213,7 +213,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                   isFamily ? "text-[12px]" : "text-[10px]",
                 )}
               >
-                来自 {getMockUserById(task.creator_id)?.label ?? "同事"} 的协同指派
+                来自 {getContactLabel(task.creator_id)} 的协同指派
               </p>
             )}
 
