@@ -21,7 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { ImageUploader } from "./ImageUploader";
 import { OwnerSelector } from "./OwnerSelector";
-import { MOCK_USERS } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, type Contact } from "@/lib/contacts";
 
 export type Recurrence = "none" | "daily" | "weekly";
 
@@ -40,6 +40,8 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   onAdd: (payload: NewTaskPayload) => void;
   currentUserId?: string | null;
+  contacts: Contact[];
+  onManageTeam?: () => void;
 }
 
 
@@ -51,17 +53,18 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
-export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId }: Props) {
+export function AddTaskSheet({ open, onOpenChange, onAdd, currentUserId, contacts, onManageTeam }: Props) {
   const [time, setTime] = useState("");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState<Date>(new Date());
   const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
+  const meId = currentUserId ?? ME_SENTINEL_ID;
+  const [ownerIds, setOwnerIds] = useState<string[]>([meId]);
   useEffect(() => {
     if (currentUserId) {
-      setOwnerIds((prev) => prev.map((id) => (id === MOCK_USERS.me.id ? currentUserId : id)));
+      setOwnerIds((prev) => prev.map((id) => (id === ME_SENTINEL_ID ? currentUserId : id)));
     }
   }, [currentUserId]);
   const [repeatOpen, setRepeatOpen] = useState(false);
