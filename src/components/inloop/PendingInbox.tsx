@@ -87,7 +87,12 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
     }
 
     setBusyId((b) => (b === task.id ? null : b));
-    if (updateErr) onChanged?.();
+    if (updateErr) {
+      toast.error("反馈提交失败，请重试");
+      onChanged?.();
+    } else {
+      toast.success("反馈成功，已通知发起人");
+    }
   }
 
   return (
