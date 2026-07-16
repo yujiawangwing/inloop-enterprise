@@ -187,7 +187,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
                 <div className="mt-2.5 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
-                    onClick={() => conflict(t)}
+                    onClick={() => setConflictTask(t)}
                     disabled={busyId === t.id}
                     className="inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-card px-2.5 py-1 text-[10.5px] font-medium text-foreground/65 transition-all hover:border-foreground/25 hover:text-foreground/85 active:scale-95 disabled:opacity-50"
                   >
