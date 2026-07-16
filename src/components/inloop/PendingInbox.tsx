@@ -61,17 +61,32 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
       });
   }
 
-  function conflict(task: PendingTask) {
+  async function submitConflict(task: PendingTask, reason: string) {
     setBusyId(task.id);
+    // 乐观：先从收件箱移除
     onOptimisticConflict?.(task);
-    supabase
+
+    // 1) 将日程 flow_status 更新为 declined
+    const { error: updateErr } = await supabase
       .from("tasks")
-      .update({ feedback_tag: "conflict" })
-      .eq("id", task.id)
-      .then(({ error }) => {
-        setBusyId((b) => (b === task.id ? null : b));
-        if (error) onChanged?.();
+      .update({ flow_status: "declined", feedback_tag: "conflict", comment: reason || null })
+      .eq("id", task.id);
+
+    // 2) 向发起人推送通知
+    if (!updateErr && task.creator_id && task.owner_id && task.creator_id !== task.owner_id) {
+      const senderName = getContactLabel(task.owner_id, "协作人");
+      const reasonSuffix = reason ? `反馈原因：${reason}` : "未填写具体原因。";
+      await supabase.from("notifications").insert({
+        receiver_id: task.creator_id,
+        sender_id: task.owner_id,
+        title: `${senderName} 标记「${task.title}」为时间冲突`,
+        content: `[${senderName}] 标记了你发起的日程「${task.title}」（${task.time}）为"时间冲突"。${reasonSuffix}`,
+        task_id: task.id,
       });
+    }
+
+    setBusyId((b) => (b === task.id ? null : b));
+    if (updateErr) onChanged?.();
   }
 
   return (
