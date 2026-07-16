@@ -865,18 +865,17 @@ function Index() {
         </div>
       </header>
 
-      {!isFamily && (
-        <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer
-            onSync={handleSync}
-            remaining={isPro ? null : aiInputsRemaining}
-            loading={aiLoading}
-            currentUserId={userId}
-            contacts={allContacts}
-            onManageTeam={() => setTeamOpen(true)}
-          />
-        </section>
-      )}
+      <section className="space-y-2.5 px-6 pb-1">
+        <AIComposer
+          onSync={handleSync}
+          remaining={isPro ? null : aiInputsRemaining}
+          loading={aiLoading}
+          currentUserId={userId}
+          contacts={allContacts}
+          onManageTeam={() => setTeamOpen(true)}
+        />
+      </section>
+
 
       <PendingInbox
         tasks={pendingTasks.map<PendingTask>((t) => ({
