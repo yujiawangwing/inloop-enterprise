@@ -216,6 +216,15 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
           </span>
         </div>
       )}
+      <ConflictModal
+        open={!!conflictTask}
+        taskTitle={conflictTask?.title ?? ""}
+        taskTime={conflictTask?.time ?? ""}
+        onClose={() => setConflictTask(null)}
+        onSubmit={async (reason) => {
+          if (conflictTask) await submitConflict(conflictTask, reason);
+        }}
+      />
     </div>
   );
 }
