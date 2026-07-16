@@ -11,6 +11,7 @@ import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { TeamManager } from "@/components/inloop/TeamManager";
+import { NotificationsBell } from "@/components/inloop/NotificationsBell";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { ME_SENTINEL_ID, primeContacts, useContacts } from "@/lib/contacts";
@@ -816,6 +817,7 @@ function Index() {
               <span className="text-foreground/40">/{tasks.length}</span>
               <span className="ml-1">已完成</span>
             </span>
+            <NotificationsBell userId={userId} />
           </div>
         </div>
 

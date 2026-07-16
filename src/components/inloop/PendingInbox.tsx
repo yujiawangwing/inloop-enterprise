@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { getContactLabel } from "@/lib/contacts";
 import { ImageLightbox } from "./ImageLightbox";
+import { ConflictModal } from "./ConflictModal";
 
 export interface PendingTask {
   id: string;
@@ -42,6 +43,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [conflictTask, setConflictTask] = useState<PendingTask | null>(null);
 
   if (tasks.length === 0) return null;
 
@@ -59,17 +61,32 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
       });
   }
 
-  function conflict(task: PendingTask) {
+  async function submitConflict(task: PendingTask, reason: string) {
     setBusyId(task.id);
+    // 乐观：先从收件箱移除
     onOptimisticConflict?.(task);
-    supabase
+
+    // 1) 将日程 flow_status 更新为 declined
+    const { error: updateErr } = await supabase
       .from("tasks")
-      .update({ feedback_tag: "conflict" })
-      .eq("id", task.id)
-      .then(({ error }) => {
-        setBusyId((b) => (b === task.id ? null : b));
-        if (error) onChanged?.();
+      .update({ flow_status: "declined", feedback_tag: "conflict", comment: reason || null })
+      .eq("id", task.id);
+
+    // 2) 向发起人推送通知
+    if (!updateErr && task.creator_id && task.owner_id && task.creator_id !== task.owner_id) {
+      const senderName = getContactLabel(task.owner_id, "协作人");
+      const reasonSuffix = reason ? `反馈原因：${reason}` : "未填写具体原因。";
+      await supabase.from("notifications").insert({
+        receiver_id: task.creator_id,
+        sender_id: task.owner_id,
+        title: `${senderName} 标记「${task.title}」为时间冲突`,
+        content: `[${senderName}] 标记了你发起的日程「${task.title}」（${task.time}）为"时间冲突"。${reasonSuffix}`,
+        task_id: task.id,
       });
+    }
+
+    setBusyId((b) => (b === task.id ? null : b));
+    if (updateErr) onChanged?.();
   }
 
   return (
@@ -170,7 +187,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
                 <div className="mt-2.5 flex items-center justify-end gap-1.5">
                   <button
                     type="button"
-                    onClick={() => conflict(t)}
+                    onClick={() => setConflictTask(t)}
                     disabled={busyId === t.id}
                     className="inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-card px-2.5 py-1 text-[10.5px] font-medium text-foreground/65 transition-all hover:border-foreground/25 hover:text-foreground/85 active:scale-95 disabled:opacity-50"
                   >
@@ -199,6 +216,15 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
           </span>
         </div>
       )}
+      <ConflictModal
+        open={!!conflictTask}
+        taskTitle={conflictTask?.title ?? ""}
+        taskTime={conflictTask?.time ?? ""}
+        onClose={() => setConflictTask(null)}
+        onSubmit={async (reason) => {
+          if (conflictTask) await submitConflict(conflictTask, reason);
+        }}
+      />
     </div>
   );
 }
