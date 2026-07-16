@@ -225,6 +225,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_connection_bidirectional: {
+        Args: { _other_id: string }
+        Returns: string
+      }
       find_user_by_contact: {
         Args: { contact: string }
         Returns: {
@@ -232,6 +236,10 @@ export type Database = {
           display_name: string
           id: string
         }[]
+      }
+      remove_connection_bidirectional: {
+        Args: { _other_id: string }
+        Returns: string
       }
     }
     Enums: {
