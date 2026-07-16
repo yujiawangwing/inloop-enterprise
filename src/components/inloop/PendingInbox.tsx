@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { getContactLabel } from "@/lib/contacts";
 import { ImageLightbox } from "./ImageLightbox";
 import { ConflictModal } from "./ConflictModal";
-import { ImageLightbox } from "./ImageLightbox";
-import { ConflictModal } from "./ConflictModal";
 
 export interface PendingTask {
   id: string;
