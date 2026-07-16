@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Inbox, ChevronDown, Check, AlarmClockOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { getContactLabel } from "@/lib/contacts";
@@ -86,7 +87,12 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
     }
 
     setBusyId((b) => (b === task.id ? null : b));
-    if (updateErr) onChanged?.();
+    if (updateErr) {
+      toast.error("反馈提交失败，请重试");
+      onChanged?.();
+    } else {
+      toast.success("反馈成功，已通知发起人");
+    }
   }
 
   return (

@@ -918,7 +918,10 @@ function Index() {
           }
         }}
         onOptimisticConflict={(pt) => {
-          setPendingTasks((ps) => ps.map((x) => (x.id === pt.id ? { ...x } : x)));
+          setPendingTasks((ps) => ps.filter((x) => x.id !== pt.id));
+          setTasks((ts) => ts.filter((x) => x.id !== pt.id));
+          setTodayAlarmTasks((ts) => ts.filter((x) => x.id !== pt.id));
+          setMilestones((ms) => ms.filter((x) => x.id !== pt.id));
         }}
       />
 
