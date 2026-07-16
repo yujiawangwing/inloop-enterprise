@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Menu, Calendar as CalendarIcon, LogOut, Users } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
 import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
-import type { Mode } from "@/components/inloop/ModeSwitch";
+
 import { SideDrawer } from "@/components/inloop/SideDrawer";
 import { AIComposer } from "@/components/inloop/AIComposer";
 import { VerificationModal } from "@/components/inloop/VerificationModal";
