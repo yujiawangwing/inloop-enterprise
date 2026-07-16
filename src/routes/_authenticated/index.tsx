@@ -978,14 +978,10 @@ function Index() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Add task"
-          className={
-            isFamily
-              ? "pointer-events-auto inline-flex items-center justify-center rounded-full bg-foreground/80 p-2.5 text-background shadow-[0_6px_18px_-8px_rgba(34,34,34,0.4)] opacity-70 transition-all hover:opacity-100 active:scale-[0.98]"
-              : "pointer-events-auto inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-[13px] font-medium tracking-wide text-background shadow-[0_10px_30px_-10px_rgba(34,34,34,0.45)] transition-all hover:bg-foreground/90 active:scale-[0.98]"
-          }
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-[13px] font-medium tracking-wide text-background shadow-[0_10px_30px_-10px_rgba(34,34,34,0.45)] transition-all hover:bg-foreground/90 active:scale-[0.98]"
         >
-          <Plus className={isFamily ? "h-3.5 w-3.5 stroke-[2.25]" : "h-4 w-4 stroke-[2.25]"} />
-          {!isFamily && "新建任务"}
+          <Plus className="h-4 w-4 stroke-[2.25]" />
+          新建任务
         </button>
       </div>
 
