@@ -524,10 +524,6 @@ function Index() {
     if (!target) return;
     const nextDone = !target.done;
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, done: nextDone } : t)));
-    if (isFamily && nextDone) {
-      setThankShow(false);
-      requestAnimationFrame(() => setThankShow(true));
-    }
     if (id.startsWith("vr-")) return;
     await supabase.from("tasks").update({ is_completed: nextDone }).eq("id", id);
   }
