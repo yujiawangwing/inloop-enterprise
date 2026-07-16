@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Inbox, ChevronDown, Check, AlarmClockOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { getContactLabel } from "@/lib/contacts";
+import { ImageLightbox } from "./ImageLightbox";
+import { ConflictModal } from "./ConflictModal";
 import { ImageLightbox } from "./ImageLightbox";
 import { ConflictModal } from "./ConflictModal";
 
