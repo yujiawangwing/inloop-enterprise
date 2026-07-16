@@ -146,24 +146,15 @@ export async function findUserByContact(contact: string): Promise<Contact[]> {
   }));
 }
 
-export async function addConnection(currentUserId: string, connectedUserId: string): Promise<{ error: string | null }> {
+export async function addConnection(currentUserId: string, connectedUserId: string): Promise<{ error: string | null; alreadyExists?: boolean }> {
   if (currentUserId === connectedUserId) return { error: "不能添加自己" };
-  const { error } = await supabase
-    .from("user_connections")
-    .insert({ user_id: currentUserId, connected_user_id: connectedUserId });
-  if (error) {
-    // 唯一约束（已存在）视为幂等成功
-    if (error.code === "23505") return { error: null };
-    return { error: error.message };
-  }
+  const { data, error } = await supabase.rpc("add_connection_bidirectional", { _other_id: connectedUserId });
+  if (error) return { error: error.message };
+  if (data === "already_exists") return { error: "该成员已在您的团队中", alreadyExists: true };
   return { error: null };
 }
 
-export async function removeConnection(currentUserId: string, connectedUserId: string): Promise<{ error: string | null }> {
-  const { error } = await supabase
-    .from("user_connections")
-    .delete()
-    .eq("user_id", currentUserId)
-    .eq("connected_user_id", connectedUserId);
+export async function removeConnection(_currentUserId: string, connectedUserId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.rpc("remove_connection_bidirectional", { _other_id: connectedUserId });
   return { error: error?.message ?? null };
 }
