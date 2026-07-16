@@ -155,7 +155,7 @@ function Index() {
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>("planner");
+  // Mode removed — always standard console view.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drafts, setDrafts] = useState<DraftTask[]>([]);
   const [verifyOpen, setVerifyOpen] = useState(false);
