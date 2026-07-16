@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Check, Trash2, MessageSquarePlus } from "lucide-react";
-import type { Mode } from "./ModeSwitch";
+import { Check, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
 import { ImageLightbox } from "./ImageLightbox";
@@ -29,50 +28,26 @@ export interface Task {
 interface Props {
   task: Task;
   onToggle: (id: string) => void;
-  mode: Mode;
   onDelete?: (id: string) => void;
 }
 
-const FEEDBACK_TAGS: { key: string; label: string }[] = [
-  { key: "received", label: "👍 收到" },
-  { key: "conflict", label: "⏰ 时间冲突" },
-  { key: "later", label: "📍 稍后处理" },
-];
-
-export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
-  const isFamily = mode === "family"; // 看板模式 (Glanceable)
-  const isPlanner = mode === "planner"; // 控制台模式 (Console)
+export function TaskItem({ task, onToggle, onDelete }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [feedbackTag, setFeedbackTag] = useState<string | null>(task.feedback_tag ?? null);
   const [comment, setComment] = useState<string>(task.comment ?? "");
-  const [commentDraft, setCommentDraft] = useState<string>(task.comment ?? "");
-  const [commentOpen, setCommentOpen] = useState(false);
   const isVirtual = task.id.startsWith("vr-");
 
   useEffect(() => {
     setFeedbackTag(task.feedback_tag ?? null);
     setComment(task.comment ?? "");
-    setCommentDraft(task.comment ?? "");
   }, [task.feedback_tag, task.comment]);
 
-  async function pickTag(key: string) {
-    const next = feedbackTag === key ? null : key;
-    setFeedbackTag(next);
-    if (isVirtual) return;
-    await supabase.from("tasks").update({ feedback_tag: next }).eq("id", task.id);
-  }
-
-  async function saveComment() {
-    const value = commentDraft.trim();
-    setComment(value);
-    setCommentOpen(false);
-    if (isVirtual) return;
-    await supabase.from("tasks").update({ comment: value || null }).eq("id", task.id);
-  }
-
-  const activeTagLabel =
-    FEEDBACK_TAGS.find((t) => t.key === feedbackTag)?.label ?? null;
+  // kept for potential future inline feedback; currently unused in console view
+  void feedbackTag;
+  void setFeedbackTag;
+  void isVirtual;
+  void supabase;
 
   return (
     <div className="relative flex items-stretch gap-4">
@@ -81,12 +56,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
         onClose={() => setLightboxOpen(false)}
       />
       {/* timeline rail */}
-      <div
-        className={cn(
-          "flex shrink-0 flex-col items-end pt-5",
-          isFamily ? "w-20" : "w-14",
-        )}
-      >
+      <div className="flex shrink-0 w-14 flex-col items-end pt-5">
         <div className="flex flex-col items-end gap-0.5">
           {(() => {
             if (!task.execution_date || !/^\d{4}-\d{2}-\d{2}$/.test(task.execution_date)) return null;
@@ -95,15 +65,14 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
             const [y, m, d] = task.execution_date.split("-").map(Number);
             const t1 = new Date(y, m - 1, d).getTime();
             const diff = Math.round((t1 - t0) / 86400000);
-            if (diff === 0) return null; // 今天不展示日期，保持简洁
+            if (diff === 0) return null;
             const mm = String(m).padStart(2, "0");
             const dd = String(d).padStart(2, "0");
             const label = diff === 1 ? `明天 ${mm}/${dd}` : `${mm}/${dd}`;
             return (
               <span
                 className={cn(
-                  "rounded-sm px-1 font-medium leading-tight tracking-tight",
-                  isFamily ? "text-[12px]" : "text-[9.5px]",
+                  "rounded-sm px-1 text-[9.5px] font-medium leading-tight tracking-tight",
                   diff === 1
                     ? "bg-orange-500/15 text-orange-700"
                     : diff > 1
@@ -118,8 +87,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
           })()}
           <span
             className={cn(
-              "inline-flex items-center gap-1 font-medium tracking-[0.14em] text-foreground/70 transition-opacity",
-              isFamily ? "text-[17px]" : "text-[11px]",
+              "inline-flex items-center gap-1 text-[11px] font-medium tracking-[0.14em] text-foreground/70 transition-opacity",
               task.done && "opacity-40",
             )}
           >
@@ -127,10 +95,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
               <span
                 aria-hidden
                 title="常规循环任务"
-                className={cn(
-                  "inline-block rounded-full bg-[#7A9B76]",
-                  isFamily ? "h-[7px] w-[7px]" : "h-[5px] w-[5px]",
-                )}
+                className="inline-block h-[5px] w-[5px] rounded-full bg-[#7A9B76]"
               />
             )}
             {task.time}
@@ -138,18 +103,11 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
         </div>
       </div>
 
-      <div
-        className={cn(
-          "relative min-w-0 flex-1 overflow-hidden",
-          isFamily ? "pb-8" : "pb-3",
-        )}
-      >
-        {/* vertical line */}
+      <div className="relative min-w-0 flex-1 overflow-hidden pb-3">
         <span
           aria-hidden
           className="absolute -left-[1.125rem] top-6 bottom-0 w-px bg-foreground/15"
         />
-        {/* dot */}
         <span
           aria-hidden
           className={cn(
@@ -160,16 +118,14 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
 
         <div
           className={cn(
-            "group flex w-full min-w-0 max-w-full items-start justify-between gap-4 overflow-hidden rounded-xl border border-foreground/[0.06] bg-card shadow-[0_1px_2px_rgba(34,34,34,0.04),0_8px_24px_-12px_rgba(34,34,34,0.08)] transition-all",
-            isFamily ? "px-5 py-5" : "px-4 py-4",
+            "group flex w-full min-w-0 max-w-full items-start justify-between gap-4 overflow-hidden rounded-xl border border-foreground/[0.06] bg-card px-4 py-4 shadow-[0_1px_2px_rgba(34,34,34,0.04),0_8px_24px_-12px_rgba(34,34,34,0.08)] transition-all",
             task.done && "opacity-60",
           )}
         >
           <div className="min-w-0 max-w-full flex-1 overflow-hidden">
             <p
               className={cn(
-                "break-words font-medium leading-snug text-foreground transition-all",
-                isFamily ? "text-[23px] tracking-tight" : "text-[15px]",
+                "break-words text-[15px] font-medium leading-snug text-foreground transition-all",
                 task.done && "line-through decoration-foreground/50 decoration-[1.25px] text-foreground/60",
               )}
             >
@@ -178,8 +134,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
             {task.note && task.note.trim() && (
               <p
                 className={cn(
-                  "break-words leading-relaxed text-foreground/60 transition-all",
-                  isFamily ? "mt-1.5 text-[15px]" : "mt-1 text-[12.5px] text-muted-foreground",
+                  "mt-1 break-words text-[12.5px] leading-relaxed text-muted-foreground transition-all",
                   task.done && "line-through decoration-foreground/40",
                 )}
               >
@@ -192,10 +147,7 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
                 type="button"
                 onClick={() => setLightboxOpen(true)}
                 aria-label="查看行程截图大图"
-                className={cn(
-                  "group/img mt-2 block overflow-hidden rounded-lg border border-foreground/10 bg-neutral-50 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]",
-                  isFamily ? "h-28 w-28" : "h-16 w-16",
-                )}
+                className="group/img mt-2 block h-16 w-16 overflow-hidden rounded-lg border border-foreground/10 bg-neutral-50 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
               >
                 <img
                   src={task.image_url}
@@ -207,118 +159,77 @@ export function TaskItem({ task, onToggle, mode, onDelete }: Props) {
             )}
 
             {task.creator_id && task.owner_id && task.creator_id !== task.owner_id && (
-              <p
-                className={cn(
-                  "mt-1.5 text-foreground/40",
-                  isFamily ? "text-[12px]" : "text-[10px]",
-                )}
-              >
+              <p className="mt-1.5 text-[10px] text-foreground/40">
                 来自 {getContactLabel(task.creator_id)} 的协同指派
               </p>
             )}
 
-
-
-
-
+            {comment && (
+              <p className="mt-1.5 text-[11px] text-foreground/55">📝 {comment}</p>
+            )}
           </div>
 
-          {isFamily ? (
+          <div className="flex flex-col items-center gap-2">
+            {onDelete && (
+              <Popover open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="删除日程"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-foreground/40 transition-all hover:bg-red-50 hover:text-red-400 active:scale-95"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  sideOffset={4}
+                  className="w-52 rounded-xl border-foreground/10 bg-card p-3 shadow-[0_8px_30px_-12px_rgba(34,34,34,0.18)]"
+                >
+                  <p className="text-[12.5px] font-medium text-foreground">
+                    确定要删除这条日程吗？
+                  </p>
+                  <div className="mt-2.5 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmOpen(false)}
+                      className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-foreground/60 transition-all hover:bg-foreground/5 hover:text-foreground"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmOpen(false);
+                        onDelete(task.id);
+                      }}
+                      className="rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] font-medium text-red-500 transition-all hover:bg-red-100"
+                    >
+                      确定删除
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             <button
               type="button"
               aria-label={task.done ? "标记为未闭环" : "标记为已闭环"}
               onClick={() => onToggle(task.id)}
               className={cn(
-                "shrink-0 self-center rounded-2xl px-5 py-4 text-[19px] font-bold tracking-[0.12em] transition-all active:scale-[0.97]",
-                task.done
-                  ? "bg-primary/10 text-primary border border-primary/30"
-                  : "bg-primary text-primary-foreground shadow-[0_8px_24px_-10px_rgba(107,122,106,0.65)] hover:bg-primary/90",
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background transition-all",
+                "hover:border-primary hover:bg-primary/5 active:scale-95",
+                task.done && "border-primary bg-primary text-primary-foreground hover:bg-primary",
               )}
             >
-              {task.done ? "✓ 已闭环" : "确认闭环"}
-            </button>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              {isPlanner && onDelete && (
-                <Popover open={confirmOpen} onOpenChange={setConfirmOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="删除日程"
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-foreground/40 transition-all hover:bg-red-50 hover:text-red-400 active:scale-95"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="end"
-                    sideOffset={4}
-                    className="w-52 rounded-xl border-foreground/10 bg-card p-3 shadow-[0_8px_30px_-12px_rgba(34,34,34,0.18)]"
-                  >
-                    <p className="text-[12.5px] font-medium text-foreground">
-                      确定要删除这条日程吗？
-                    </p>
-                    <div className="mt-2.5 flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setConfirmOpen(false)}
-                        className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-foreground/60 transition-all hover:bg-foreground/5 hover:text-foreground"
-                      >
-                        取消
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfirmOpen(false);
-                          onDelete(task.id);
-                        }}
-                        className="rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] font-medium text-red-500 transition-all hover:bg-red-100"
-                      >
-                        确定删除
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-              <button
-                type="button"
-                aria-label={task.done ? "标记为未闭环" : "标记为已闭环"}
-                onClick={() => onToggle(task.id)}
+              <Check
                 className={cn(
-                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-foreground/70 bg-background transition-all",
-                  "hover:border-primary hover:bg-primary/5 active:scale-95",
-                  task.done && "border-primary bg-primary text-primary-foreground hover:bg-primary",
+                  "h-3.5 w-3.5 stroke-[2.25] transition-opacity",
+                  task.done ? "opacity-100" : "opacity-0",
                 )}
-              >
-                <Check
-                  className={cn(
-                    "h-3.5 w-3.5 stroke-[2.25] transition-opacity",
-                    task.done ? "opacity-100" : "opacity-0",
-                  )}
-                />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* —— Glanceable mode: 只展示已就位的批注 / 状态签收，不暴露繁琐控件 —— */}
-        {isFamily && (activeTagLabel || comment) && (
-          <div className="mt-2 ml-1 flex flex-wrap items-center gap-2">
-            {activeTagLabel && (
-              <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[14px] font-medium tracking-tight text-primary">
-                {activeTagLabel}
-              </span>
-            )}
-            {comment && (
-              <span className="rounded-full bg-foreground/[0.06] px-3 py-1 text-[14px] text-foreground/75">
-                📝 {comment}
-              </span>
-            )}
+              />
+            </button>
           </div>
-        )}
-
-
-
+        </div>
       </div>
     </div>
   );
