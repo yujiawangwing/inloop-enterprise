@@ -817,6 +817,7 @@ function Index() {
               <span className="text-foreground/40">/{tasks.length}</span>
               <span className="ml-1">已完成</span>
             </span>
+            <NotificationsBell userId={userId} />
           </div>
         </div>
 
