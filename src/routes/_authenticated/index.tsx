@@ -170,7 +170,7 @@ function Index() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const [teamOpen, setTeamOpen] = useState(false);
-  const isFamily = mode === "family";
+  const isFamily = false;
   const isToday = selectedDate === today;
 
   // 团队成员（真实 user_connections）
