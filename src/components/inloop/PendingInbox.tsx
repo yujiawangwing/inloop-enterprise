@@ -43,6 +43,7 @@ export function PendingInbox({ tasks, onChanged, onOptimisticAccept, onOptimisti
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [conflictTask, setConflictTask] = useState<PendingTask | null>(null);
 
   if (tasks.length === 0) return null;
 
