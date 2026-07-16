@@ -979,7 +979,7 @@ function Index() {
 
         <div>
           {sorted.map((t) => (
-            <TaskItem key={t.id} task={t} onToggle={toggle} mode={mode} onDelete={handleDelete} />
+            <TaskItem key={t.id} task={t} onToggle={toggle} onDelete={handleDelete} />
           ))}
         </div>
       </section>
