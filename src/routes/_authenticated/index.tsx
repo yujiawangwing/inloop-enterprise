@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Menu, Calendar as CalendarIcon, LogOut, Users } from "lucide-react";
 import { TaskItem, type Task, type TaskType } from "@/components/inloop/TaskItem";
 import { AddTaskSheet } from "@/components/inloop/AddTaskSheet";
-import type { Mode } from "@/components/inloop/ModeSwitch";
+
 import { SideDrawer } from "@/components/inloop/SideDrawer";
 import { AIComposer } from "@/components/inloop/AIComposer";
 import { VerificationModal } from "@/components/inloop/VerificationModal";
@@ -85,7 +85,9 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
-const MODE_KEY = "inloop:mode";
+// Legacy keys purged on mount to prevent any lingering "big mode" state.
+const LEGACY_KEYS = ["inloop:mode", "isBoardMode", "deviceMode"];
+
 
 interface DbTask {
   id: string;
@@ -153,7 +155,7 @@ function Index() {
   const [milestones, setMilestones] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>("planner");
+  // Mode removed — always standard console view.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drafts, setDrafts] = useState<DraftTask[]>([]);
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -168,7 +170,7 @@ function Index() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
   const [teamOpen, setTeamOpen] = useState(false);
-  const isFamily = mode === "family";
+  
   const isToday = selectedDate === today;
 
   // 团队成员（真实 user_connections）
@@ -223,20 +225,16 @@ function Index() {
     };
   }, [navigate]);
 
-  // 本地存储：模式 + 语音开关
+  // 本地存储：清理遗留的“大字版/看板模式”缓存 + 加载语音开关
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(MODE_KEY);
-      if (saved === "planner" || saved === "family") setMode(saved);
+      for (const k of LEGACY_KEYS) localStorage.removeItem(k);
       const v = localStorage.getItem(VOICE_KEY);
       if (v === "off") setVoiceAlarmOn(false);
     } catch {}
   }, []);
 
-  function changeMode(m: Mode) {
-    setMode(m);
-    try { localStorage.setItem(MODE_KEY, m); } catch {}
-  }
+
 
   function changeVoiceAlarm(v: boolean) {
     setVoiceAlarmOn(v);
@@ -526,10 +524,6 @@ function Index() {
     if (!target) return;
     const nextDone = !target.done;
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, done: nextDone } : t)));
-    if (isFamily && nextDone) {
-      setThankShow(false);
-      requestAnimationFrame(() => setThankShow(true));
-    }
     if (id.startsWith("vr-")) return;
     await supabase.from("tasks").update({ is_completed: nextDone }).eq("id", id);
   }
@@ -867,18 +861,17 @@ function Index() {
         </div>
       </header>
 
-      {!isFamily && (
-        <section className="space-y-2.5 px-6 pb-1">
-          <AIComposer
-            onSync={handleSync}
-            remaining={isPro ? null : aiInputsRemaining}
-            loading={aiLoading}
-            currentUserId={userId}
-            contacts={allContacts}
-            onManageTeam={() => setTeamOpen(true)}
-          />
-        </section>
-      )}
+      <section className="space-y-2.5 px-6 pb-1">
+        <AIComposer
+          onSync={handleSync}
+          remaining={isPro ? null : aiInputsRemaining}
+          loading={aiLoading}
+          currentUserId={userId}
+          contacts={allContacts}
+          onManageTeam={() => setTeamOpen(true)}
+        />
+      </section>
+
 
       <PendingInbox
         tasks={pendingTasks.map<PendingTask>((t) => ({
@@ -935,22 +928,12 @@ function Index() {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={cn(
-                  "group inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 transition-colors hover:bg-foreground/[0.04]",
-                  isFamily
-                    ? "text-[14px] font-medium tracking-[0.14em] text-foreground/80"
-                    : "text-[10.5px] font-medium tracking-[0.12em] text-foreground/80",
-                )}
+                className="group inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 text-[10.5px] font-medium tracking-[0.12em] text-foreground/80 transition-colors hover:bg-foreground/[0.04]"
               >
                 <span>
                   {isToday ? "今日核心要务" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
-                <CalendarIcon
-                  className={cn(
-                    "shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70",
-                    isFamily ? "h-3.5 w-3.5" : "h-3 w-3",
-                  )}
-                />
+                <CalendarIcon className="h-3 w-3 shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70" />
               </button>
             </PopoverTrigger>
             <PopoverContent
@@ -981,7 +964,7 @@ function Index() {
 
         <div>
           {sorted.map((t) => (
-            <TaskItem key={t.id} task={t} onToggle={toggle} mode={mode} onDelete={handleDelete} />
+            <TaskItem key={t.id} task={t} onToggle={toggle} onDelete={handleDelete} />
           ))}
         </div>
       </section>
@@ -991,14 +974,10 @@ function Index() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Add task"
-          className={
-            isFamily
-              ? "pointer-events-auto inline-flex items-center justify-center rounded-full bg-foreground/80 p-2.5 text-background shadow-[0_6px_18px_-8px_rgba(34,34,34,0.4)] opacity-70 transition-all hover:opacity-100 active:scale-[0.98]"
-              : "pointer-events-auto inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-[13px] font-medium tracking-wide text-background shadow-[0_10px_30px_-10px_rgba(34,34,34,0.45)] transition-all hover:bg-foreground/90 active:scale-[0.98]"
-          }
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-[13px] font-medium tracking-wide text-background shadow-[0_10px_30px_-10px_rgba(34,34,34,0.45)] transition-all hover:bg-foreground/90 active:scale-[0.98]"
         >
-          <Plus className={isFamily ? "h-3.5 w-3.5 stroke-[2.25]" : "h-4 w-4 stroke-[2.25]"} />
-          {!isFamily && "新建任务"}
+          <Plus className="h-4 w-4 stroke-[2.25]" />
+          新建任务
         </button>
       </div>
 
