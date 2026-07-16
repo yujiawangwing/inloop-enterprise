@@ -225,20 +225,16 @@ function Index() {
     };
   }, [navigate]);
 
-  // 本地存储：模式 + 语音开关
+  // 本地存储：清理遗留的“大字版/看板模式”缓存 + 加载语音开关
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(MODE_KEY);
-      if (saved === "planner" || saved === "family") setMode(saved);
+      for (const k of LEGACY_KEYS) localStorage.removeItem(k);
       const v = localStorage.getItem(VOICE_KEY);
       if (v === "off") setVoiceAlarmOn(false);
     } catch {}
   }, []);
 
-  function changeMode(m: Mode) {
-    setMode(m);
-    try { localStorage.setItem(MODE_KEY, m); } catch {}
-  }
+
 
   function changeVoiceAlarm(v: boolean) {
     setVoiceAlarmOn(v);
