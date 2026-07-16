@@ -932,22 +932,12 @@ function Index() {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={cn(
-                  "group inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 transition-colors hover:bg-foreground/[0.04]",
-                  isFamily
-                    ? "text-[14px] font-medium tracking-[0.14em] text-foreground/80"
-                    : "text-[10.5px] font-medium tracking-[0.12em] text-foreground/80",
-                )}
+                className="group inline-flex items-center gap-1.5 rounded-md px-1 -mx-1 text-[10.5px] font-medium tracking-[0.12em] text-foreground/80 transition-colors hover:bg-foreground/[0.04]"
               >
                 <span>
                   {isToday ? "今日核心要务" : `${selectedDate.slice(5).replace("-", "/")} · 行程`}
                 </span>
-                <CalendarIcon
-                  className={cn(
-                    "shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70",
-                    isFamily ? "h-3.5 w-3.5" : "h-3 w-3",
-                  )}
-                />
+                <CalendarIcon className="h-3 w-3 shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70" />
               </button>
             </PopoverTrigger>
             <PopoverContent
