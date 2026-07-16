@@ -85,7 +85,9 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
-const MODE_KEY = "inloop:mode";
+// Legacy keys purged on mount to prevent any lingering "big mode" state.
+const LEGACY_KEYS = ["inloop:mode", "isBoardMode", "deviceMode"];
+
 
 interface DbTask {
   id: string;
