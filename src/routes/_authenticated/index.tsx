@@ -11,6 +11,7 @@ import { ThankYouToast } from "@/components/inloop/ThankYouToast";
 import { PaywallModal } from "@/components/inloop/PaywallModal";
 import { PendingInbox, type PendingTask } from "@/components/inloop/PendingInbox";
 import { TeamManager } from "@/components/inloop/TeamManager";
+import { NotificationsBell } from "@/components/inloop/NotificationsBell";
 import { type DraftTask } from "@/lib/parseDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { ME_SENTINEL_ID, primeContacts, useContacts } from "@/lib/contacts";
