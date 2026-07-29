@@ -14,15 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          receiver_id: string
+          sender_id: string
+          task_id: string | null
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          receiver_id: string
+          sender_id: string
+          task_id?: string | null
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          receiver_id?: string
+          sender_id?: string
+          task_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       routines: {
         Row: {
           active: boolean
           created_at: string
-          creator_id: string | null
+          creator_id: string
           flow_status: string
           id: string
           note: string | null
-          owner_id: string | null
+          owner_id: string
           recurrence_days: number[]
           recurrence_type: string
           time: string
@@ -32,11 +89,11 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
-          creator_id?: string | null
+          creator_id: string
           flow_status?: string
           id?: string
           note?: string | null
-          owner_id?: string | null
+          owner_id: string
           recurrence_days?: number[]
           recurrence_type?: string
           time: string
@@ -46,11 +103,11 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
-          creator_id?: string | null
+          creator_id?: string
           flow_status?: string
           id?: string
           note?: string | null
-          owner_id?: string | null
+          owner_id?: string
           recurrence_days?: number[]
           recurrence_type?: string
           time?: string
@@ -63,7 +120,7 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string
-          creator_id: string | null
+          creator_id: string
           execution_date: string | null
           feedback_tag: string | null
           flow_status: string
@@ -72,7 +129,7 @@ export type Database = {
           is_completed: boolean
           link: string | null
           note: string | null
-          owner_id: string | null
+          owner_id: string
           routine_id: string | null
           time: string
           title: string
@@ -82,7 +139,7 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string
-          creator_id?: string | null
+          creator_id: string
           execution_date?: string | null
           feedback_tag?: string | null
           flow_status?: string
@@ -91,7 +148,7 @@ export type Database = {
           is_completed?: boolean
           link?: string | null
           note?: string | null
-          owner_id?: string | null
+          owner_id: string
           routine_id?: string | null
           time: string
           title: string
@@ -101,7 +158,7 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string
-          creator_id?: string | null
+          creator_id?: string
           execution_date?: string | null
           feedback_tag?: string | null
           flow_status?: string
@@ -110,7 +167,7 @@ export type Database = {
           is_completed?: boolean
           link?: string | null
           note?: string | null
-          owner_id?: string | null
+          owner_id?: string
           routine_id?: string | null
           time?: string
           title?: string
@@ -127,12 +184,63 @@ export type Database = {
           },
         ]
       }
+      user_connections: {
+        Row: {
+          connected_user_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          connected_user_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          connected_user_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_connections_connected_user_id_fkey"
+            columns: ["connected_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_connection_bidirectional: {
+        Args: { _other_id: string }
+        Returns: string
+      }
+      find_user_by_contact: {
+        Args: { contact: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+        }[]
+      }
+      remove_connection_bidirectional: {
+        Args: { _other_id: string }
+        Returns: string
+      }
     }
     Enums: {
       task_type: "temporary" | "routine" | "milestone"

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import { OwnerSelector } from "./OwnerSelector";
 import { ImageLightbox } from "./ImageLightbox";
-import { MOCK_USERS } from "@/lib/mockUsers";
+import { ME_SENTINEL_ID, type Contact } from "@/lib/contacts";
 
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   remaining?: number | null;
   loading?: boolean;
   currentUserId?: string | null;
+  contacts: Contact[];
+  onManageTeam?: () => void;
 }
 
 // Minimal typing for the Web Speech API
@@ -26,21 +28,20 @@ type SpeechRecognitionLike = {
   onerror: ((e: { error?: string }) => void) | null;
 };
 
-export function AIComposer({ onSync, remaining, loading = false, currentUserId }: Props) {
+export function AIComposer({ onSync, remaining, loading = false, currentUserId, contacts, onManageTeam }: Props) {
   const [instruction, setInstruction] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [listening, setListening] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [ownerIds, setOwnerIds] = useState<string[]>([currentUserId ?? MOCK_USERS.me.id]);
-
+  const meId = currentUserId ?? ME_SENTINEL_ID;
+  const [ownerIds, setOwnerIds] = useState<string[]>([meId]);
 
   useEffect(() => {
     if (currentUserId) {
       setOwnerIds((prev) => {
-        // 将历史的 mock me.id 替换为真实 uid；若已有真实 uid 则不动
-        const next = prev.map((id) => (id === MOCK_USERS.me.id ? currentUserId : id));
+        const next = prev.map((id) => (id === ME_SENTINEL_ID ? currentUserId : id));
         return next.length === 0 ? [currentUserId] : next;
       });
     }
@@ -193,9 +194,11 @@ export function AIComposer({ onSync, remaining, loading = false, currentUserId }
         <OwnerSelector
           value={ownerIds}
           onChange={setOwnerIds}
-          currentUserId={currentUserId}
+          contacts={contacts}
+          meId={meId}
           size="sm"
           align="end"
+          onManage={onManageTeam}
         />
       </div>
 

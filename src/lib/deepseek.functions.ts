@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
 const DEEPSEEK_MODEL = "deepseek-chat";
@@ -184,6 +185,7 @@ function parseDeepSeekJsonArray(text: string): DeepSeekDraft[] {
 }
 
 export const parseDraftWithDeepSeek = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: { instruction: string; pastedLink?: string; localBaseline?: { date: string; time: string; dow: number } }) => {
     if (!data || typeof data.instruction !== "string") {
       throw new Error("instruction 必填");
